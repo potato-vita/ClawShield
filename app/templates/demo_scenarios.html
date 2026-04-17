@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <h2>Demo 场景中心</h2>
+  <p>点击按钮创建 run 并执行对应场景，执行完成后自动跳转详情页。</p>
+</section>
+
+<section class="scenario-grid">
+  {% for s in scenarios %}
+  <form method="post" action="/demo/run" class="panel scenario-card">
+    <h3>{{ s.name }}</h3>
+    <p>{{ s.description }}</p>
+    <input type="hidden" name="scenario_id" value="{{ s.scenario_id }}" />
+    <button type="submit">运行 {{ s.scenario_id }}</button>
+  </form>
+  {% endfor %}
+</section>
+{% endblock %}

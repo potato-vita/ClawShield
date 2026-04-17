@@ -1,0 +1,32 @@
+workspace:
+  root: app/data/sample_workspace
+  deny_outside: true
+  sensitive_patterns:
+    - ".env"
+    - "*secret*"
+    - "config/*.yml"
+  blocked_paths:
+    - "/etc"
+    - "~/.ssh"
+
+capability:
+  allow_network: true
+  allowed_domains:
+    - "api.openai.com"
+    - "example-safe.local"
+  allowed_tools:
+    - "summarize_tool"
+    - "search_tool"
+  blocked_commands:
+    - "rm -rf /"
+    - "shutdown"
+    - "reboot"
+
+trust:
+  allowed_skill_sources:
+    - "local_verified"
+    - "official_repo"
+  default_skill_trust: "unknown"
+  tool_trust:
+    summarize_tool: "trusted"
+    http_uploader: "risky"

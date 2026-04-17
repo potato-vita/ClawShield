@@ -1,0 +1,229 @@
+:root {
+  --bg: #f4f3ef;
+  --ink: #1f2430;
+  --muted: #6b7280;
+  --line: #d8d7d1;
+  --surface: rgba(255, 255, 255, 0.78);
+  --accent: #0f766e;
+  --accent-2: #f59e0b;
+  --risk-low: #0f766e;
+  --risk-medium: #b45309;
+  --risk-high: #b91c1c;
+  --risk-critical: #7f1d1d;
+  --shadow: 0 16px 40px rgba(31, 36, 48, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at 20% 15%, #fff6db 0%, transparent 42%),
+              radial-gradient(circle at 85% 20%, #d9f7f3 0%, transparent 45%),
+              var(--bg);
+  color: var(--ink);
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.bg-grid {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(rgba(15, 118, 110, 0.06) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(15, 118, 110, 0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(circle at 50% 20%, black 40%, transparent 100%);
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 28px;
+  backdrop-filter: blur(10px);
+  background: rgba(244, 243, 239, 0.74);
+  border-bottom: 1px solid var(--line);
+}
+
+.logo {
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+}
+
+.topbar nav {
+  display: flex;
+  gap: 18px;
+}
+
+.topbar a {
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.container {
+  width: min(1120px, 94%);
+  margin: 22px auto 40px;
+  display: grid;
+  gap: 18px;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 18px;
+  align-items: stretch;
+}
+
+.hero h1 {
+  margin: 0 0 8px;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.04;
+}
+
+.tag {
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--accent);
+}
+
+.panel,
+.card {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.card span {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.card h2 {
+  margin: 8px 0 0;
+  font-size: 2rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+th,
+td {
+  border-bottom: 1px dashed var(--line);
+  padding: 10px 6px;
+  text-align: left;
+}
+
+input,
+select,
+textarea,
+button {
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+button {
+  background: linear-gradient(90deg, var(--accent) 0%, #0e8b74 100%);
+  color: white;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+}
+
+button:hover {
+  filter: brightness(1.05);
+}
+
+.grid-form {
+  display: grid;
+  gap: 10px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: white;
+  font-size: 0.86rem;
+}
+
+.risk-low { background: var(--risk-low); }
+.risk-medium { background: var(--risk-medium); }
+.risk-high { background: var(--risk-high); }
+.risk-critical { background: var(--risk-critical); }
+
+.timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.timeline-item {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 12px;
+  align-items: start;
+  border-left: 3px solid var(--accent-2);
+  padding-left: 12px;
+}
+
+.time {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.code-block {
+  background: #1f2430;
+  color: #e6edf3;
+  border-radius: 12px;
+  padding: 14px;
+  overflow: auto;
+}
+
+.scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.scenario-card {
+  display: grid;
+  gap: 8px;
+}
+
+.fade-in {
+  animation: rise 0.45s ease both;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; }
+  .cards { grid-template-columns: repeat(2, 1fr); }
+  .timeline-item { grid-template-columns: 1fr; }
+  .scenario-grid { grid-template-columns: 1fr; }
+}

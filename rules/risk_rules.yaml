@@ -1,0 +1,78 @@
+rules:
+  - rule_id: R1
+    name: WorkspaceEscape
+    category: boundary
+    severity: high
+    decision: block
+    enabled: true
+
+  - rule_id: R2
+    name: SensitiveFileRead
+    category: boundary
+    severity: medium
+    decision: alert
+    enabled: true
+
+  - rule_id: R3
+    name: UnauthorizedToolInvocation
+    category: capability
+    severity: high
+    decision: block
+    enabled: true
+
+  - rule_id: R4
+    name: UnauthorizedDomainRequest
+    category: capability
+    severity: high
+    decision: block
+    enabled: true
+
+  - rule_id: R5
+    name: SensitiveEnvRead
+    category: capability
+    severity: high
+    decision: block
+    enabled: true
+
+  - rule_id: R6
+    name: DangerousCommandExecution
+    category: capability
+    severity: critical
+    decision: block
+    enabled: true
+
+  - rule_id: R7
+    name: SensitiveReadThenExfiltration
+    category: correlation
+    severity: critical
+    decision: block
+    enabled: true
+    time_window_sec: 30
+    description: 敏感资源读取后短时间外联
+
+  - rule_id: R8
+    name: UnauthorizedToolThenCommand
+    category: correlation
+    severity: critical
+    decision: block
+    enabled: true
+    time_window_sec: 30
+    description: 未授权工具调用后短时间内执行命令
+
+  - rule_id: R10
+    name: HighFrequencySensitiveProbe
+    category: correlation
+    severity: high
+    decision: alert
+    enabled: true
+    time_window_sec: 20
+    threshold: 4
+    description: 短时高频敏感路径探测
+
+  - rule_id: R11
+    name: UntrustedSkillInvokesHighRiskTool
+    category: trust
+    severity: high
+    decision: block
+    enabled: true
+    description: 不可信 Skill 调用高风险工具

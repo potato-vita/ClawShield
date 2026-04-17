@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <h2>运行详情</h2>
+  {% if run %}
+  <p><b>Run:</b> {{ run.run_id }}</p>
+  <p><b>Task:</b> {{ run.task_name }}</p>
+  <p><b>Status:</b> {{ run.status }}</p>
+  <p><b>Risk:</b> <span class="pill risk-{{ run.overall_risk_level }}">{{ run.overall_risk_level }}</span></p>
+  <p><a href="/reports/{{ run.run_id }}">查看报告</a></p>
+  {% else %}
+  <p>Run 不存在</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h3>事件时间线</h3>
+  <div class="timeline">
+    {% for e in events %}
+    <article class="timeline-item">
+      <div class="time">{{ e.created_at }}</div>
+      <div class="content">
+        <b>{{ e.event_type }}</b> / {{ e.action }}
+        <p>{{ e.message }}</p>
+        <small>{{ e.resource_type }}: {{ e.resource }} | decision={{ e.decision }} | severity={{ e.severity }}</small>
+      </div>
+    </article>
+    {% else %}
+    <p>暂无事件</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <h3>调用链图</h3>
+  <div id="traceChart" style="height: 420px;"></div>
+</section>
+
+<script>
+  window.CLAW_TRACE = {{ trace_graph | tojson }};
+</script>
+{% endblock %}

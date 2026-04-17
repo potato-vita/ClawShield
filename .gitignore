@@ -1,0 +1,20 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Test cache
+.pytest_cache/
+
+# Virtual env and local tools
+.venv/
+.tools/
+
+# Runtime data
+app/data/*.db
+app/data/*.log
+app/data/reports/*.html
+
+# OS/editor
+.DS_Store
+Thumbs.db

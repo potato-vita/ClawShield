@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <h2>执行前审计</h2>
+  <form method="post" action="/preaudit" class="grid-form">
+    <label>run_id</label>
+    <input name="run_id" value="preaudit_demo" required />
+    <label>skill_source</label>
+    <select name="skill_source">
+      <option value="local_verified">local_verified</option>
+      <option value="official_repo">official_repo</option>
+      <option value="unknown" selected>unknown</option>
+    </select>
+    <label>target_paths（每行一个）</label>
+    <textarea name="target_paths" rows="8">app/adapters/mock_openclaw.py
+app/core/gateway.py</textarea>
+    <button type="submit">运行预审计</button>
+  </form>
+</section>
+
+{% if result %}
+<section class="panel">
+  <h3>结果</h3>
+  <p><b>score:</b> {{ result.pre_audit_score }}</p>
+  <p><b>risk level:</b> <span class="pill risk-{{ result.result_level }}">{{ result.result_level }}</span></p>
+  <h4>发现项</h4>
+  <pre class="code-block">{{ result.risk_items | tojson(indent=2) }}</pre>
+  <h4>建议</h4>
+  <ul>
+    {% for s in result.suggestions %}
+    <li>{{ s }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

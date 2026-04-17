@@ -1,0 +1,11 @@
+allow_tools:
+  - summarize_tool
+  - search_tool
+
+allow_actions:
+  - file_read
+  - file_write
+  - tool_invoke
+  - http_request
+  - command_exec
+  - env_read
