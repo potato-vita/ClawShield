@@ -18,4 +18,4 @@
 
 Hands-on demonstration of ClawShield's security audit capabilities for AI agent tool-call workflows.
 
-→ [Demo Guide / 演示文档](./DemoREADME.md)
+→ [Demo Guide / 演示文档](./demo/README.md)
