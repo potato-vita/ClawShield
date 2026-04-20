@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <h2>规则管理</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>rule_id</th>
+        <th>name</th>
+        <th>category</th>
+        <th>severity</th>
+        <th>decision</th>
+        <th>enabled</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rules %}
+      <tr>
+        <td>{{ r.rule_id }}</td>
+        <td>{{ r.name }}</td>
+        <td>{{ r.category }}</td>
+        <td>{{ r.severity }}</td>
+        <td>{{ r.decision }}</td>
+        <td>{{ r.enabled }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6">暂无规则</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="panel">
+  <h3>边界配置（YAML）</h3>
+  <pre class="code-block">{{ boundaries }}</pre>
+</section>
+{% endblock %}

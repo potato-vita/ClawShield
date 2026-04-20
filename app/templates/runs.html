@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <h2>运行列表</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Run ID</th>
+        <th>Task</th>
+        <th>Started</th>
+        <th>Status</th>
+        <th>Risk</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for run in runs %}
+      <tr>
+        <td>{{ run.run_id }}</td>
+        <td>{{ run.task_name }}</td>
+        <td>{{ run.started_at }}</td>
+        <td>{{ run.status }}</td>
+        <td><span class="pill risk-{{ run.overall_risk_level }}">{{ run.overall_risk_level }}</span></td>
+        <td><a href="/runs/{{ run.run_id }}">详情</a> | <a href="/reports/{{ run.run_id }}">报告</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6">暂无数据</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

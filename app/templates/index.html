@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <div>
+    <p class="tag">Secure Audit Layer for OpenClaw</p>
+    <h1>{{ app_name }}</h1>
+    <p>统一安全接管 + 运行时监控 + 风险关联分析 + 报告生成</p>
+  </div>
+  <form class="panel" method="post" action="/runs/new">
+    <h3>一键启动任务</h3>
+    <label>任务名</label>
+    <input name="task_name" value="demo_task" required />
+    <label>场景</label>
+    <select name="scenario_id" required>
+      {% for s in scenarios %}
+      <option value="{{ s.scenario_id }}">{{ s.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">创建并执行</button>
+  </form>
+</section>
+
+<section class="cards">
+  <article class="card">
+    <span>Total Runs</span>
+    <h2>{{ summary.total_runs }}</h2>
+  </article>
+  <article class="card">
+    <span>High Risk Runs</span>
+    <h2>{{ summary.high_risk_runs }}</h2>
+  </article>
+  <article class="card">
+    <span>Running</span>
+    <h2>{{ summary.running_runs }}</h2>
+  </article>
+  <article class="card">
+    <span>Finished</span>
+    <h2>{{ summary.finished_runs }}</h2>
+  </article>
+</section>
+
+<section class="panel">
+  <h3>最近运行</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>run_id</th>
+        <th>task_name</th>
+        <th>status</th>
+        <th>risk</th>
+        <th>detail</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for run in runs %}
+      <tr>
+        <td>{{ run.run_id }}</td>
+        <td>{{ run.task_name }}</td>
+        <td>{{ run.status }}</td>
+        <td><span class="pill risk-{{ run.overall_risk_level }}">{{ run.overall_risk_level }}</span></td>
+        <td><a href="/runs/{{ run.run_id }}">查看</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">暂无运行记录</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

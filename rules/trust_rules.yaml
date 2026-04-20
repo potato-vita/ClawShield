@@ -1,0 +1,9 @@
+skill_sources:
+  local_verified: trusted
+  official_repo: trusted
+  third_party_market: unknown
+
+tool_trust:
+  summarize_tool: trusted
+  search_tool: trusted
+  http_uploader: risky

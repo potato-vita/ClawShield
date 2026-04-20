@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClawShield</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/main.css" />
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <header class="topbar">
+    <a class="logo" href="/">ClawShield</a>
+    <nav>
+      <a href="/">Dashboard</a>
+      <a href="/runs">Runs</a>
+      <a href="/rules">Rules</a>
+      <a href="/preaudit">PreAudit</a>
+      <a href="/demo">Demo</a>
+    </nav>
+  </header>
+  <main class="container fade-in">
+    {% block content %}{% endblock %}
+  </main>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

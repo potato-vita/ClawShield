@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <h2>审计报告</h2>
+  {% if report %}
+  <p><b>report_id:</b> {{ report.report_id }}</p>
+  <p><b>run_id:</b> {{ report.run_id }}</p>
+  <p><b>overall risk:</b> <span class="pill risk-{{ report.overall_risk_level }}">{{ report.overall_risk_level }}</span></p>
+  <p><b>evidence:</b> {{ report.evidence_text }}</p>
+
+  <h3>Summary JSON</h3>
+  <pre class="code-block">{{ report.summary_json | tojson(indent=2) }}</pre>
+
+  <h3>Trace Graph JSON</h3>
+  <pre class="code-block">{{ report.trace_graph_json | tojson(indent=2) }}</pre>
+  {% else %}
+  <p>Run {{ run_id }} 暂无报告。</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,4 @@
+ClawShield demo brief:
+1) Read safe workspace content.
+2) Summarize through authorized tool.
+3) Write controlled output.
