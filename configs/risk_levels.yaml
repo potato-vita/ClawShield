@@ -1,0 +1,13 @@
+levels:
+  low:
+    disposition: allow
+    description: normal flow
+  medium:
+    disposition: warn
+    description: suspicious behavior
+  high:
+    disposition: deny
+    description: risky operation
+  critical:
+    disposition: deny
+    description: immediate block

@@ -1,0 +1,13 @@
+version: v1
+rules:
+  - chain_id: env-read-then-http
+    enabled: true
+    sequence:
+      - event_type: resource_access_requested
+        resource_type: env
+      - event_type: resource_access_requested
+        resource_type: http
+    window_seconds: 300
+    risk_level: high
+    disposition: deny
+    explain: sensitive env read followed by outbound request

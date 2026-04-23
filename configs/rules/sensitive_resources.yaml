@@ -1,0 +1,13 @@
+version: v1
+rules:
+  - rule_id: env-sensitive-keys
+    enabled: true
+    resource_type: env
+    match_type: pattern
+    patterns:
+      - "*_KEY"
+      - "*_TOKEN"
+      - "*_SECRET"
+    sensitivity_level: high
+    labels:
+      - credential

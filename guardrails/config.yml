@@ -1,0 +1,31 @@
+models:
+  - type: main
+    engine: placeholder
+    model: semantic-minimal
+
+rails:
+  input:
+    flows: [input]
+  dialog:
+    flows: [dialog]
+  execution:
+    flows: [execution]
+  output:
+    flows: [output]
+
+actions_server_url: ""
+
+actions:
+  - guardrails.actions.task_context_actions
+  - guardrails.actions.policy_actions
+  - guardrails.actions.audit_actions
+
+settings:
+  explain: true
+  verbose: true
+  logging:
+    enabled: true
+
+# Round 3 note:
+# This is still a minimal semantic guardrail profile, but now includes
+# explicit model placeholders, action registration, and explain/logging switches.

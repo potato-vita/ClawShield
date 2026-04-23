@@ -1,0 +1,4 @@
+# Round 1 placeholder rail
+define flow output
+  # TODO(round-3): add output safety checks
+  bot respond "output rail placeholder"

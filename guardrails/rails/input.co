@@ -1,0 +1,4 @@
+# Round 1 placeholder rail
+define flow input
+  # TODO(round-3): add input checks and initial classification
+  bot respond "input rail placeholder"

@@ -1,0 +1,5 @@
+enabled: true
+mode: placeholder
+launch_command: ""
+health_check_url: ""
+timeout_seconds: 10

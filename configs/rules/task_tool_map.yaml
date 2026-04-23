@@ -1,0 +1,16 @@
+version: v1
+rules:
+  - rule_id: task-analysis-basic-tools
+    enabled: true
+    task_type: analysis
+    allowed_tools:
+      - workspace_reader
+      - summarizer
+      - env_reader
+      - http_fetcher
+    denied_tools:
+      - high_risk_plugin
+      - danger_exec_plugin
+      - shell_executor
+      - system_command_runner
+    reason: analysis tasks should prefer read-only tools

@@ -1,0 +1,98 @@
+Metadata-Version: 2.4
+Name: clawshield
+Version: 0.1.0
+Summary: ClawShield bootstrap backend
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi<1.0.0,>=0.115.0
+Requires-Dist: uvicorn[standard]<1.0.0,>=0.30.0
+Requires-Dist: pydantic<3.0.0,>=2.8.0
+Requires-Dist: pydantic-settings<3.0.0,>=2.3.0
+Requires-Dist: sqlalchemy<3.0.0,>=2.0.30
+Requires-Dist: PyYAML<7.0.0,>=6.0.1
+Requires-Dist: python-dotenv<2.0.0,>=1.0.1
+
+# ClawShield
+
+ClawShield is a security audit and runtime governance layer for OpenClaw-like tool-calling AI agents.
+
+## Current Stage
+
+This repository is at **Round 10 (demo polish and final delivery)**:
+
+- end-to-end run ingest -> semantic guard -> policy gateway -> telemetry -> report flow
+- dashboard with system status, risk overview, and one-click standard scenarios
+- report page focused on task/risk/disposition/evidence chain/conclusion
+- reproducible demo seeds and fallback free-input prompts
+- unified API error contract and baseline regression tests
+
+## Quick Start
+
+1. Install dependencies:
+
+```bash
+pip install -e .
+```
+
+2. Initialize database:
+
+```bash
+python3 scripts/init_db.py
+```
+
+3. Start service:
+
+```bash
+python3 scripts/dev_start.py
+```
+
+4. Open pages:
+
+- Dashboard: `http://127.0.0.1:8000/api/v1/ui/dashboard`
+- Swagger: `http://127.0.0.1:8000/docs`
+
+## Demo Fast Path
+
+1. Seed three standard scenarios:
+
+```bash
+python3 scripts/seed_demo_data.py
+```
+
+2. Open dashboard and click `run scenario` for:
+
+- `workspace_escape`
+- `env_then_http`
+- `analysis_high_risk_tool`
+
+3. For each scenario, jump to report page and present:
+
+- final risk/disposition
+- highlighted chain path
+- key tool calls and resources
+
+## API Highlights
+
+- `GET /api/v1/dashboard/overview`
+- `POST /api/v1/dashboard/scenarios/{scenario_id}/run`
+- `POST /api/v1/tasks/ingest`
+- `POST /api/v1/bridge/opencaw/tool-call`
+- `GET /api/v1/runs/{run_id}/report`
+- `GET /api/v1/runs/{run_id}/graph`
+
+## Repository Guide
+
+- `app/`: backend code (API/services/policy/analyzer/gateway)
+- `configs/`: runtime and rule configuration
+- `docs/architecture/`: module and sequence docs for defense
+- `docs/demo/`: scenarios, runbook, fallback prompts, known limits, presentation points
+- `scripts/`: init/start/seed scripts for local demo
+- `tests/`: unit + integration tests across round 2-10
+
+## Known Limits (Summary)
+
+- OpenClaw bridge still uses local managed placeholder process in default demo mode
+- Tool executors are controlled/mock style for deterministic demos
+- Risk chains currently focus on three canonical cases
+
+See full list: [`docs/demo/known_limits.md`](docs/demo/known_limits.md)
