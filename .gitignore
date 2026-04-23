@@ -1,16 +1,24 @@
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
 
+# 虚拟环境
 .venv/
 venv/
 
-.env
-data/*.db
-data/*.sqlite
+# 数据库
+*.db
+*.sqlite
 
+# 日志
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# 系统
 .DS_Store
