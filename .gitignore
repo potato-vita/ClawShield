@@ -1,24 +1,30 @@
-# Python
+# Python cache / artifacts
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# 虚拟环境
+# Virtual environments
 .venv/
 venv/
+env/
 
-# 数据库
+# Local data and runtime files
 *.db
 *.sqlite
-
-# 日志
+*.sqlite3
 logs/
 *.log
 
-# IDE
+# Editor / OS
 .vscode/
 .idea/
-
-# 系统
 .DS_Store

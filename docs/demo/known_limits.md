@@ -5,6 +5,7 @@
 1. OpenClaw bridge defaults to local managed placeholder process in demo mode.
 2. Tool executors are controlled/mock style; production-grade real side effects need extra hardening.
 3. Current scenario set focuses on three canonical risk chains; long-tail chains need additional rule packs.
+4. `exec` command parsing uses heuristic inference, so highly obfuscated commands may not map to expected action types.
 
 ## Policy / Semantics
 

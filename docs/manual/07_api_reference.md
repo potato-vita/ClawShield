@@ -74,6 +74,7 @@
 - `POST /api/v1/bridge/opencaw/tool-result`
 - `POST /api/v1/bridge/opencaw/callback/tool-call`
 - `POST /api/v1/bridge/opencaw/callback/tool-result`
+- `POST /api/v1/bridge/opencaw/callback/message`
 
 ### UI 页面
 
@@ -135,6 +136,16 @@
 
 若无 `run_id`，会按 `session_id` 解析或自动创建 run。
 
+动作识别规则（当前版本）：
+
+- 优先读取结构化字段：`url / env_key / file_path`
+- 对 `exec` 一类工具，会解析 `arguments.command/cmd/script` 文本
+  - 含网络命令 + URL（如 `curl https://...`）=> `http`
+  - 含环境变量引用（如 `${OPENAI_API_KEY}`）=> `env_read`
+  - 含文件读取命令（如 `cat ./a.txt`）=> `file_read`
+
+这套规则用于把外部回调统一映射为可审计的 `resource_type/resource_id`，从而保证风险链可计算。
+
 ### 7.4.4 `GET /events`
 
 可选过滤参数：
@@ -148,7 +159,33 @@
 - `offset`
 - `order`（`asc` / `desc`）
 
-### 7.4.5 `GET /runs/{run_id}/report`
+### 7.4.5 `POST /bridge/opencaw/callback/message`
+
+用途：接收纯聊天消息事件（不依赖 tool-call）。  
+支持负载：
+
+- `message`（字符串或对象）
+- `messages`（对象数组，含 `role/content`）
+
+最小示例：
+
+```json
+{
+  "session_id": "oc_session_001",
+  "messages": [
+    {"role": "user", "content": "请先审阅代码结构"},
+    {"role": "assistant", "content": "好的，我先看目录层级"}
+  ]
+}
+```
+
+返回包含：
+
+- `run_id`
+- `processed_count`
+- 每条消息对应的审计事件摘要（`event_id/role/actor_type/content_preview`）
+
+### 7.4.6 `GET /runs/{run_id}/report`
 
 返回报告主结构：
 
@@ -169,4 +206,3 @@
 - API 层异常必须走统一错误协议。
 - 不在 API 层做复杂业务逻辑分支。
 - 新增接口前先评估是否可复用现有 service。
-

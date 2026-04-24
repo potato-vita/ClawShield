@@ -40,7 +40,7 @@
 
 步骤：
 
-1. 在 `bridge_service._resolve_action_type` 增加识别逻辑。
+1. 在 `app/gateway/action_intent.py` 增加动作识别与参数规范化逻辑。
 2. 新建 interceptor 提取资源身份。
 3. 新建 executor 执行逻辑。
 4. 在 `gateway_manager` 注册。
@@ -91,4 +91,3 @@
 - 规则结构变更。
 - 风险链判定逻辑变更。
 - 运行或排障步骤变更。
-

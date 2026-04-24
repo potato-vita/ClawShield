@@ -10,6 +10,7 @@ class FileReadInterceptor(BaseInterceptor):
             request.arguments.get("file_path")
             or request.arguments.get("path")
             or request.arguments.get("target_file")
+            or request.arguments.get("filepath")
             or "unknown_file"
         )
         return InterceptedAction(

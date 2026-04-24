@@ -256,6 +256,7 @@ def dashboard_page() -> HTMLResponse:
 <header>
   <h1>ClawShield Demo Console</h1>
   <p>面向答辩演示：状态、标准案例一键运行、最近风险审计结果。</p>
+  <p id="live-meta" class="muted">live refresh: waiting...</p>
   <nav>
     <a href="/api/v1/ui/dashboard">Dashboard</a>
     <a href="/docs">API Docs</a>
@@ -323,10 +324,23 @@ def dashboard_page() -> HTMLResponse:
       </div>
     </article>
   </section>
+
+  <section class="card" style="margin-top:14px;">
+    <h3>实时审计流（OpenClaw 对话与工具）</h3>
+    <table>
+      <thead>
+        <tr><th>time</th><th>run_id</th><th>event</th><th>tool</th><th>status</th></tr>
+      </thead>
+      <tbody id="live-event-table"></tbody>
+    </table>
+  </section>
 </main>
 """
 
     script = """
+let overviewLoading = false;
+const DASHBOARD_REFRESH_MS = 2000;
+
 function renderTaskExamples(containerId, items) {
   const container = document.getElementById(containerId);
   container.innerHTML = '';
@@ -372,6 +386,10 @@ async function runScenario(button, scenarioId) {
 }
 
 async function loadOverview() {
+  if (overviewLoading) return;
+  overviewLoading = true;
+
+  try {
   const statusResp = await fetch('/api/v1/system/status');
   const statusPayload = await statusResp.json();
   if (statusPayload.success) {
@@ -435,9 +453,36 @@ async function loadOverview() {
 
   renderTaskExamples('safe-task-list', data.free_input_examples?.safe_tasks || []);
   renderTaskExamples('risk-task-list', data.free_input_examples?.risk_tasks || []);
+
+  const evResp = await fetch('/api/v1/events?limit=60');
+  const evPayload = await evResp.json();
+  const liveTable = document.getElementById('live-event-table');
+  liveTable.innerHTML = '';
+  if (evPayload.success) {
+    const tracked = new Set(['chat_message_received', 'tool_call_requested', 'tool_result_received']);
+    const liveEvents = (evPayload.data.events || []).filter(ev => tracked.has(ev.event_type)).slice(0, 20);
+    for (const ev of liveEvents) {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${ev.ts}</td>
+        <td class="mono">${ev.run_id}</td>
+        <td>${ev.event_type}</td>
+        <td>${ev.tool_id || '-'}</td>
+        <td><span class="badge ${ev.status || ''}">${ev.status || '-'}</span></td>
+      `;
+      liveTable.appendChild(row);
+    }
+  }
+
+  const stamp = new Date().toLocaleTimeString();
+  document.getElementById('live-meta').textContent = `live refresh: every ${DASHBOARD_REFRESH_MS / 1000}s, last update ${stamp}`;
+  } finally {
+    overviewLoading = false;
+  }
 }
 
 loadOverview();
+window.setInterval(loadOverview, DASHBOARD_REFRESH_MS);
 """
 
     return HTMLResponse(content=_shell("ClawShield Dashboard", content, script))
@@ -479,7 +524,13 @@ def run_detail_page(run_id: str) -> HTMLResponse:
 """
 
     script_template = """
+let runLoading = false;
+const RUN_REFRESH_MS = 2000;
+
 async function loadRun() {
+  if (runLoading) return;
+  runLoading = true;
+  try {
   const runResp = await fetch('/api/v1/runs/__RUN_ID__');
   const runPayload = await runResp.json();
   if (runPayload.success) {
@@ -513,9 +564,13 @@ async function loadRun() {
     `;
     table.appendChild(row);
   }
+  } finally {
+    runLoading = false;
+  }
 }
 
 loadRun();
+window.setInterval(loadRun, RUN_REFRESH_MS);
 """
     script = script_template.replace("__RUN_ID__", run_id)
 
@@ -596,7 +651,13 @@ def run_report_page(run_id: str) -> HTMLResponse:
 """
 
     script_template = """
+let reportLoading = false;
+const REPORT_REFRESH_MS = 2000;
+
 async function loadReport() {
+  if (reportLoading) return;
+  reportLoading = true;
+  try {
   const resp = await fetch('/api/v1/runs/__RUN_ID__/report');
   const payload = await resp.json();
   if (!payload.success) return;
@@ -686,9 +747,13 @@ async function loadReport() {
     <div>disposition summary: ${report.disposition_summary || '-'}</div>
     <div style="margin-top:8px;">${report.conclusion}</div>
   `;
+  } finally {
+    reportLoading = false;
+  }
 }
 
 loadReport();
+window.setInterval(loadReport, REPORT_REFRESH_MS);
 """
     script = script_template.replace("__RUN_ID__", run_id)
 

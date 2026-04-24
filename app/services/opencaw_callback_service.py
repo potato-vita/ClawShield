@@ -10,6 +10,7 @@ from app.core.errors import BadRequestError, NotFoundError
 from app.repositories.run_repo import run_repository
 from app.schemas.task import TaskIngestRequest
 from app.schemas.tool_call import ToolCallRequest, ToolResultPayload
+from app.services.audit_service import AuditService, audit_service
 from app.services.bridge_service import BridgeService, bridge_service
 from app.services.task_service import TaskService, task_service
 
@@ -25,9 +26,15 @@ def _pick_first(mapping: dict[str, Any], keys: tuple[str, ...]) -> Any | None:
 class OpenClawCallbackService:
     """Adapt external OpenClaw callback payloads into ClawShield bridge contracts."""
 
-    def __init__(self, task_service_instance: TaskService, bridge_service_instance: BridgeService) -> None:
+    def __init__(
+        self,
+        task_service_instance: TaskService,
+        bridge_service_instance: BridgeService,
+        audit_service_instance: AuditService,
+    ) -> None:
         self._task_service = task_service_instance
         self._bridge_service = bridge_service_instance
+        self._audit_service = audit_service_instance
 
     @staticmethod
     def _normalize_arguments(raw: Any) -> dict[str, Any]:
@@ -56,6 +63,19 @@ class OpenClawCallbackService:
             content = _pick_first(message, ("content", "text", "input"))
             if isinstance(content, str) and content.strip():
                 return content.strip()
+
+        if isinstance(message, str) and message.strip():
+            return message.strip()
+
+        messages = payload.get("messages")
+        if isinstance(messages, list):
+            for item in messages:
+                if isinstance(item, str) and item.strip():
+                    return item.strip()
+                if isinstance(item, dict):
+                    content = _pick_first(item, ("content", "text", "input", "message"))
+                    if isinstance(content, str) and content.strip():
+                        return content.strip()
 
         return "OpenClaw external session task"
 
@@ -142,6 +162,83 @@ class OpenClawCallbackService:
         if isinstance(payload.get("tool_result"), dict):
             return [payload["tool_result"]]
         return [payload]
+
+    @staticmethod
+    def _collect_message_items(payload: dict[str, Any]) -> list[dict[str, Any]]:
+        items: list[dict[str, Any]] = []
+
+        messages = payload.get("messages")
+        if isinstance(messages, list):
+            for item in messages:
+                if isinstance(item, dict):
+                    items.append(item)
+                elif isinstance(item, str):
+                    items.append({"content": item})
+            if items:
+                return items
+
+        message = payload.get("message")
+        if isinstance(message, dict):
+            return [message]
+        if isinstance(message, str):
+            return [{"content": message, "role": payload.get("role")}]
+
+        if any(key in payload for key in ("content", "text", "input", "message_text")):
+            return [payload]
+        return []
+
+    @staticmethod
+    def _extract_message_text(item: dict[str, Any]) -> str:
+        content = _pick_first(item, ("content", "text", "input", "message", "message_text"))
+        if isinstance(content, str):
+            return content.strip()
+        if isinstance(content, dict):
+            text = _pick_first(content, ("text", "content", "value"))
+            if isinstance(text, str):
+                return text.strip()
+        if isinstance(content, list):
+            pieces: list[str] = []
+            for part in content:
+                if isinstance(part, str) and part.strip():
+                    pieces.append(part.strip())
+                    continue
+                if isinstance(part, dict):
+                    text = _pick_first(part, ("text", "content", "value"))
+                    if isinstance(text, str) and text.strip():
+                        pieces.append(text.strip())
+            return " ".join(pieces).strip()
+        return ""
+
+    @staticmethod
+    def _role_to_actor_type(role: str) -> str:
+        normalized = role.lower()
+        if normalized in {"assistant", "model", "ai"}:
+            return "model"
+        if normalized in {"user", "human"}:
+            return "user"
+        return "system"
+
+    def _parse_message_item(
+        self,
+        item: dict[str, Any],
+        payload: dict[str, Any],
+        fallback_idx: int,
+    ) -> tuple[str, str, str]:
+        role_value = _pick_first(item, ("role", "speaker", "actor"))
+        if role_value is None:
+            role_value = _pick_first(payload, ("role", "speaker", "actor"))
+        role = str(role_value).strip() if role_value else "user"
+
+        content = self._extract_message_text(item)
+        if not content:
+            raise BadRequestError(
+                message="message content is required in callback payload",
+                error_code="MESSAGE_PAYLOAD_INVALID",
+                details={"missing": f"content[{fallback_idx}]"},
+            )
+
+        actor_type = self._role_to_actor_type(role)
+        return role, actor_type, content
 
     @staticmethod
     def _parse_tool_call_item(item: dict[str, Any], fallback_idx: int) -> tuple[str, str, dict[str, Any], str | None]:
@@ -283,9 +380,51 @@ class OpenClawCallbackService:
             "results": results,
         }
 
+    def process_message_callback(self, db: Session, payload: dict[str, Any]) -> dict[str, Any]:
+        run_id, session_id = self._resolve_or_create_run_id(db=db, payload=payload, allow_create=True)
+        items = self._collect_message_items(payload)
+        if not items:
+            raise BadRequestError(
+                message="message payload is empty",
+                error_code="MESSAGE_PAYLOAD_INVALID",
+                details={"expected_any_of": ["message", "messages", "content"]},
+            )
+
+        results: list[dict[str, Any]] = []
+        for index, item in enumerate(items, start=1):
+            role, actor_type, content = self._parse_message_item(item=item, payload=payload, fallback_idx=index)
+
+            event = self._audit_service.record_event(
+                db=db,
+                run_id=run_id,
+                session_id=session_id,
+                event_type="chat_message_received",
+                event_stage="conversation",
+                actor_type=actor_type,
+                input_summary=content if actor_type == "user" else None,
+                output_summary=content if actor_type in {"model", "system"} else None,
+                status="recorded",
+            )
+            results.append(
+                {
+                    "event_id": event.event_id,
+                    "role": role,
+                    "actor_type": actor_type,
+                    "event_type": "chat_message_received",
+                    "content_preview": content[:200],
+                }
+            )
+
+        return {
+            "run_id": run_id,
+            "session_id": session_id,
+            "processed_count": len(results),
+            "results": results,
+        }
+
 
 opencaw_callback_service = OpenClawCallbackService(
     task_service_instance=task_service,
     bridge_service_instance=bridge_service,
+    audit_service_instance=audit_service,
 )
-

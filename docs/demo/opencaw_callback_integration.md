@@ -7,6 +7,7 @@ This project now supports callback-based OpenClaw integration without requiring 
 - `POST /api/v1/bridge/opencaw/session/bootstrap`
 - `POST /api/v1/bridge/opencaw/callback/tool-call`
 - `POST /api/v1/bridge/opencaw/callback/tool-result`
+- `POST /api/v1/bridge/opencaw/callback/message`
 
 ## Minimal Flow
 
@@ -34,7 +35,15 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/bridge/opencaw/callback/tool-result
   -d '{"session_id":"oc_session_001","tool_result":{"tool_call_id":"call_1","tool_id":"workspace_reader","execution_status":"mock_completed","result_summary":"blocked"}}'
 ```
 
-4. View report:
+4. Send pure chat message events:
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/v1/bridge/opencaw/callback/message \
+  -H 'Content-Type: application/json' \
+  -d '{"session_id":"oc_session_001","messages":[{"role":"user","content":"请先审阅代码结构"},{"role":"assistant","content":"好的，我先看目录层级。"}]}'
+```
+
+5. View report:
 
 ```bash
 xdg-open "http://127.0.0.1:8000/api/v1/ui/dashboard"
@@ -79,3 +88,8 @@ xdg-open "http://127.0.0.1:8000/api/v1/ui/dashboard"
 - If OpenClaw can already attach `run_id`, you can still use existing:
   - `POST /api/v1/bridge/opencaw/tool-call`
   - `POST /api/v1/bridge/opencaw/tool-result`
+- For generic `exec` tools, include `arguments.command` (or `cmd/script`).
+  ClawShield will infer action type from command text:
+  - env variable read -> `env_read`
+  - network call with URL -> `http`
+  - file read command -> `file_read`

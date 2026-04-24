@@ -70,6 +70,12 @@ In report page, narrate in order:
 3. evidence highlighted path
 4. final conclusion text
 
+## 8. 展示 OpenClaw 实时回调（可选但强烈建议）
+
+1. 向 `callback/message` 发送 user/assistant 消息，确认 Run Detail 出现 `chat_message_received`。
+2. 向 `callback/tool-call` 发送 `exec` 两步命令（先读 env，再发 http）。
+3. 刷新 report，确认出现 `chain_env_then_http`。
+
 ---
 
 ## 自由输入兜底方案

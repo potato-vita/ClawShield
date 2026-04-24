@@ -74,6 +74,7 @@ python3 scripts/seed_demo_data.py
 - `POST /api/v1/bridge/opencaw/session/bootstrap`
 - `POST /api/v1/bridge/opencaw/callback/tool-call`
 - `POST /api/v1/bridge/opencaw/callback/tool-result`
+- `POST /api/v1/bridge/opencaw/callback/message`
 
 ## Real OpenClaw Callback Integration
 
@@ -103,14 +104,25 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/bridge/opencaw/callback/tool-result
   -d '{"session_id":"oc_session_001","tool_result":{"tool_call_id":"call_1","tool_id":"workspace_reader","execution_status":"mock_completed","result_summary":"blocked"}}'
 ```
 
+4. Send pure chat message events (no tool call required):
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/v1/bridge/opencaw/callback/message \
+  -H 'Content-Type: application/json' \
+  -d '{"session_id":"oc_session_001","messages":[{"role":"user","content":"请先审阅代码结构"},{"role":"assistant","content":"好的，我先从目录层级开始。"}]}'
+```
+
+5. For generic `exec` tools, pass `arguments.command` to enable automatic intent mapping (`env_read/http/file_read`), so risk chains can be evaluated from callback events.
+
 ## Repository Guide
 
 - `app/`: backend code (API/services/policy/analyzer/gateway)
 - `configs/`: runtime and rule configuration
 - `docs/architecture/`: module and sequence docs for defense
+- `docs/manual/`: full maintainer manual (architecture/API/policy/ops/conventions)
 - `docs/demo/`: scenarios, runbook, fallback prompts, known limits, presentation points
 - `scripts/`: init/start/seed scripts for local demo
-- `tests/`: unit + integration tests across round 2-10
+- `tests/`: unit + integration tests across round 2-11
 
 ## Known Limits (Summary)
 

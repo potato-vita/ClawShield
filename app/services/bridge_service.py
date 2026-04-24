@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, BadRequestError, NotFoundError, RuntimePipelineError
+from app.gateway.action_intent import infer_action_intent
 from app.gateway.gateway_manager import gateway_manager
 from app.repositories.run_repo import run_repository
 from app.schemas.tool_call import ActionRequest, ToolCallRequest, ToolResultPayload
@@ -17,18 +18,6 @@ logger = logging.getLogger(__name__)
 
 class BridgeService:
     """Orchestrate tool-call pipeline used by OpenClaw bridge and demo runner."""
-
-    @staticmethod
-    def _resolve_action_type(payload: ToolCallRequest) -> str:
-        tool_lower = payload.tool_id.lower()
-
-        if "http" in tool_lower or "url" in payload.arguments:
-            return "http"
-        if "env" in tool_lower or "env_key" in payload.arguments or "key" in payload.arguments:
-            return "env_read"
-        if "file" in tool_lower or "path" in payload.arguments or "file_path" in payload.arguments:
-            return "file_read"
-        return "tool_call"
 
     def process_tool_call(self, db: Session, payload: ToolCallRequest) -> dict[str, Any]:
         logger.info(
@@ -59,12 +48,16 @@ class BridgeService:
 
         try:
             decision = guardrails_service.evaluate_tool_call(db=db, payload=payload)
+            action_type, normalized_arguments = infer_action_intent(
+                tool_id=payload.tool_id,
+                arguments=payload.arguments,
+            )
             action_request = ActionRequest(
                 run_id=payload.run_id,
                 tool_call_id=payload.tool_call_id,
                 tool_id=payload.tool_id,
-                action_type=self._resolve_action_type(payload),  # type: ignore[arg-type]
-                arguments=payload.arguments,
+                action_type=action_type,
+                arguments=normalized_arguments,
                 task_type=decision.task_type,
                 semantic_decision=decision.decision,
                 semantic_reason=decision.semantic_reason,
@@ -159,4 +152,3 @@ class BridgeService:
 
 
 bridge_service = BridgeService()
-

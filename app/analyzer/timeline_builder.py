@@ -13,6 +13,7 @@ class TimelineBuilder:
         "task_received": "Task Received",
         "task_classified": "Task Classified",
         "dialog_state_changed": "Dialog State Updated",
+        "chat_message_received": "Chat Message Received",
         "tool_call_requested": "Tool Call Requested",
         "semantic_check_completed": "Semantic Check Completed",
         "policy_check_completed": "Policy Check Completed",

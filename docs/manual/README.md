@@ -7,7 +7,7 @@
 - 集成方（如 OpenClaw 侧）：按接口和回调规范完成接入。
 - 运维人员：按排障手册定位问题并恢复服务。
 
-当前文档基线对应代码状态：Round 10 + OpenClaw callback bridge（截至 2026-04-23）。
+当前文档基线对应代码状态：Round 10 + OpenClaw callback bridge（截至 2026-04-24）。
 
 ## 阅读路径建议
 
@@ -26,6 +26,7 @@
 11. [11 测试与质量保障](./11_testing_and_quality.md)
 12. [12 运维与故障排查](./12_operations_and_troubleshooting.md)
 13. [13 开发约束与扩展指南](./13_development_constraints_and_extension.md)
+14. [14 项目结构与维护规范](./14_repository_structure_and_maintenance.md)
 
 ## 与现有 docs 的关系
 

@@ -13,6 +13,7 @@
 - run 创建与默认状态。
 - guardrails 语义判定（含 mock 后端）。
 - policy engine 判定（含 false positive 回归）。
+- action intent 识别（含 `exec` 命令推断）。
 - 风险链基本行为。
 
 ### Integration 覆盖
@@ -26,7 +27,7 @@
 - round8: report 结构完整性。
 - round9: 错误协议稳定性。
 - round10: dashboard 场景一键运行。
-- roundz11: callback 接线与 session 自动解析。
+- roundz11: callback 接线、session 自动解析、message 回调、`exec` 风险链映射。
 
 ## 11.3 推荐执行命令
 
@@ -69,4 +70,3 @@ pytest -q tests/unit/test_policy_engine.py tests/integration/test_round5_policy.
 - 不允许未覆盖核心路径的规则改动直接合并。
 - 新增风险链必须补最少 1 个正例 + 1 个反例测试。
 - 新增 API 必须满足统一错误协议。
-

@@ -60,11 +60,13 @@ Dashboard 由三部分构成：
 - 左上：run 基础信息（task、task_type、created_at）
 - 右上：run 状态（status、risk、disposition）
 - 下方表格：按时间顺序列出关键事件
+- 页面默认定时轮询，适合演示 OpenClaw 回调的实时入流效果
 
 适用场景：
 
 - 排查“某次决策为什么发生”。
 - 对照 event_type 观察流程是否完整。
+- 观察 `chat_message_received`、`tool_call_requested`、`resource_access_requested` 的实时变化。
 
 ## 10.4 Audit Report 页面解读
 
@@ -98,4 +100,3 @@ Report 页面偏“叙事化审计输出”，关注四块：
 
 - 误解：Report 没显示全部事件就是丢数据。
 - 事实：Report 是摘要视图，完整事件在 Run Detail。
-

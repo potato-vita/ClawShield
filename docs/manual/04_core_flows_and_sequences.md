@@ -24,7 +24,7 @@
 
 1. 记录 `tool_call_requested` 事件。
 2. `guardrails_service.evaluate_tool_call` 给出语义判定。
-3. `bridge_service` 解析 action_type。
+3. `bridge_service` 调用 `action_intent` 统一解析 action_type（含 `exec` 命令推断）。
 4. `gateway_manager.execute`：
 5. interceptor 抽取资源。
 6. policy engine 评估规则。
@@ -62,12 +62,14 @@
 - `/api/v1/bridge/opencaw/session/bootstrap`
 - `/api/v1/bridge/opencaw/callback/tool-call`
 - `/api/v1/bridge/opencaw/callback/tool-result`
+- `/api/v1/bridge/opencaw/callback/message`
 
 关键点：
 
 - callback 支持仅用 `session_id`，可自动解析/创建 run。
 - tool-call 支持直接字段和 OpenAI 风格 `message.tool_calls`。
 - tool-result 支持 `tool_result` 或 `tool_results` 批量结构。
+- 纯聊天可通过 `callback/message` 入审计流，记录 `chat_message_received`。
 
 ## 4.6 run 状态推进规则
 
@@ -101,4 +103,3 @@ TelemetryCollector 映射：
 - `tool_result_received`
 - `risk_chain_formed`
 - `final_risk_conclusion_generated`
-

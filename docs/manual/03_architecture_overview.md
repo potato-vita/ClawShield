@@ -36,6 +36,7 @@ ClawShield 采用清晰分层，核心依赖方向如下：
 
 ### 网关层（`app/gateway`）
 
+- `action_intent` 统一动作识别（含 `exec` 命令文本推断）。
 - interceptor 抽取资源身份（file/env/http/tool）。
 - executor 执行受控副作用（当前为 mock）。
 - manager 统一合并语义判定与策略判定后给出执行结论。
@@ -73,4 +74,3 @@ ClawShield 采用清晰分层，核心依赖方向如下：
 - 不把 IO/副作用写进核心策略匹配逻辑。
 - 规则与策略判定可解释，输出需可审计。
 - 默认执行器是 mock 语义，真实执行需单独硬化。
-

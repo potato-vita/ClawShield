@@ -171,3 +171,32 @@ def handle_tool_result_callback(payload: dict[str, Any] = Body(...), db: Session
         response_payload["processed_count"],
     )
     return success_response(data=response_payload)
+
+
+@router.post("/callback/message", response_model=APIResponse)
+def handle_message_callback(payload: dict[str, Any] = Body(...), db: Session = Depends(get_db)) -> APIResponse:
+    logger.info(
+        "bridge.callback.message.start run_id=%s session_id=%s",
+        payload.get("run_id"),
+        payload.get("session_id"),
+    )
+    try:
+        response_payload = opencaw_callback_service.process_message_callback(db=db, payload=payload)
+        db.commit()
+    except AppError:
+        db.rollback()
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise RuntimePipelineError(
+            message=f"callback message failed: {exc}",
+            error_code="CALLBACK_MESSAGE_FAILED",
+            details={"run_id": payload.get("run_id"), "session_id": payload.get("session_id")},
+        ) from exc
+
+    logger.info(
+        "bridge.callback.message.done run_id=%s processed_count=%s",
+        response_payload["run_id"],
+        response_payload["processed_count"],
+    )
+    return success_response(data=response_payload)

@@ -1,7 +1,0 @@
-fastapi<1.0.0,>=0.115.0
-uvicorn[standard]<1.0.0,>=0.30.0
-pydantic<3.0.0,>=2.8.0
-pydantic-settings<3.0.0,>=2.3.0
-sqlalchemy<3.0.0,>=2.0.30
-PyYAML<7.0.0,>=6.0.1
-python-dotenv<2.0.0,>=1.0.1
