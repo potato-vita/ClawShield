@@ -339,7 +339,26 @@ def dashboard_page() -> HTMLResponse:
 
     script = """
 let overviewLoading = false;
-const DASHBOARD_REFRESH_MS = 2000;
+let dashboardTimer = null;
+let dashboardErrorCount = 0;
+let dashboardLastLiveEventTs = null;
+const DASHBOARD_LIVE_EVENT_MAX_ROWS = 20;
+const DASHBOARD_REFRESH_ACTIVE_MS = 5000;
+const DASHBOARD_REFRESH_HIDDEN_MS = 20000;
+const DASHBOARD_REFRESH_MAX_BACKOFF_MS = 60000;
+
+function nextDashboardDelayMs() {
+  const base = document.hidden ? DASHBOARD_REFRESH_HIDDEN_MS : DASHBOARD_REFRESH_ACTIVE_MS;
+  const multiplier = Math.pow(2, Math.min(dashboardErrorCount, 4));
+  return Math.min(base * multiplier, DASHBOARD_REFRESH_MAX_BACKOFF_MS);
+}
+
+function scheduleDashboardRefresh() {
+  if (dashboardTimer) {
+    window.clearTimeout(dashboardTimer);
+  }
+  dashboardTimer = window.setTimeout(loadOverview, nextDashboardDelayMs());
+}
 
 function renderTaskExamples(containerId, items) {
   const container = document.getElementById(containerId);
@@ -348,6 +367,24 @@ function renderTaskExamples(containerId, items) {
     const li = document.createElement('li');
     li.textContent = text;
     container.appendChild(li);
+  }
+}
+
+function appendLiveEventRow(table, ev) {
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td>${ev.ts}</td>
+    <td class="mono">${ev.run_id}</td>
+    <td>${ev.event_type}</td>
+    <td>${ev.tool_id || '-'}</td>
+    <td><span class="badge ${ev.status || ''}">${ev.status || '-'}</span></td>
+  `;
+  table.appendChild(row);
+}
+
+function trimLiveRows(table, maxRows) {
+  while (table.rows.length > maxRows) {
+    table.deleteRow(0);
   }
 }
 
@@ -388,101 +425,131 @@ async function runScenario(button, scenarioId) {
 async function loadOverview() {
   if (overviewLoading) return;
   overviewLoading = true;
+  let succeeded = false;
 
   try {
-  const statusResp = await fetch('/api/v1/system/status');
-  const statusPayload = await statusResp.json();
-  if (statusPayload.success) {
-    const status = statusPayload.data;
-    document.getElementById('status-clawshield').innerHTML = `<span class="badge allow">${status.system_status}</span>`;
-    document.getElementById('status-openclaw').innerHTML = `<span class="badge ${status.opencaw_status}">${status.opencaw_status}</span>`;
-    document.getElementById('status-guardrails').innerHTML = `<span class="badge ${status.guardrails_status}">${status.guardrails_status}</span>`;
-    document.getElementById('status-guardrails-detail').textContent = status.guardrails_detail || '';
-  }
+    const statusResp = await fetch('/api/v1/system/status');
+    const statusPayload = await statusResp.json();
+    if (statusPayload.success) {
+      const status = statusPayload.data;
+      document.getElementById('status-clawshield').innerHTML = `<span class="badge allow">${status.system_status}</span>`;
+      document.getElementById('status-openclaw').innerHTML = `<span class="badge ${status.opencaw_status}">${status.opencaw_status}</span>`;
+      document.getElementById('status-guardrails').innerHTML = `<span class="badge ${status.guardrails_status}">${status.guardrails_status}</span>`;
+      document.getElementById('status-guardrails-detail').textContent = status.guardrails_detail || '';
+    }
 
-  const resp = await fetch('/api/v1/dashboard/overview');
-  const payload = await resp.json();
-  if (!payload.success) return;
+    const resp = await fetch('/api/v1/dashboard/overview');
+    const payload = await resp.json();
+    if (!payload.success) return;
 
-  const data = payload.data;
-  const recent = data.recent_runs || [];
-  document.getElementById('kpi-runs').textContent = recent.length;
-  document.getElementById('kpi-risk').textContent = data.high_risk_count;
-  document.getElementById('kpi-blocked').textContent = data.blocked_count;
+    const data = payload.data;
+    const recent = data.recent_runs || [];
+    document.getElementById('kpi-runs').textContent = recent.length;
+    document.getElementById('kpi-risk').textContent = data.high_risk_count;
+    document.getElementById('kpi-blocked').textContent = data.blocked_count;
 
-  const scenarioList = document.getElementById('scenario-list');
-  scenarioList.innerHTML = '';
-  for (const item of data.standard_scenarios || []) {
-    const block = document.createElement('article');
-    block.className = 'scenario-item';
-    block.innerHTML = `
-      <div class="head">
-        <strong>${item.name}</strong>
-        <span class="badge">${item.expected_chain}</span>
-      </div>
-      <div class="muted">${item.prompt}</div>
-      <div class="actions">
-        <button type="button" class="btn primary" data-scenario-id="${item.scenario_id}">run scenario</button>
-        <span class="mono">${item.scenario_id}</span>
-      </div>
-    `;
-    scenarioList.appendChild(block);
-  }
+    const scenarioList = document.getElementById('scenario-list');
+    scenarioList.innerHTML = '';
+    for (const item of data.standard_scenarios || []) {
+      const block = document.createElement('article');
+      block.className = 'scenario-item';
+      block.innerHTML = `
+        <div class="head">
+          <strong>${item.name}</strong>
+          <span class="badge">${item.expected_chain}</span>
+        </div>
+        <div class="muted">${item.prompt}</div>
+        <div class="actions">
+          <button type="button" class="btn primary" data-scenario-id="${item.scenario_id}">run scenario</button>
+          <span class="mono">${item.scenario_id}</span>
+        </div>
+      `;
+      scenarioList.appendChild(block);
+    }
 
-  for (const button of document.querySelectorAll('[data-scenario-id]')) {
-    const scenarioId = button.getAttribute('data-scenario-id');
-    button.addEventListener('click', () => runScenario(button, scenarioId));
-  }
+    for (const button of document.querySelectorAll('[data-scenario-id]')) {
+      const scenarioId = button.getAttribute('data-scenario-id');
+      button.addEventListener('click', () => runScenario(button, scenarioId));
+    }
 
-  const table = document.getElementById('run-table');
-  table.innerHTML = '';
-  for (const run of recent) {
-    const risk = run.final_risk_level || 'none';
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${run.run_id}</td>
-      <td>${run.task_summary || '-'}</td>
-      <td><span class="badge ${risk}">${risk}</span></td>
-      <td>
-        <a href="/api/v1/ui/runs/${run.run_id}">detail</a> |
-        <a href="/api/v1/ui/runs/${run.run_id}/report">report</a>
-      </td>
-    `;
-    table.appendChild(row);
-  }
-
-  renderTaskExamples('safe-task-list', data.free_input_examples?.safe_tasks || []);
-  renderTaskExamples('risk-task-list', data.free_input_examples?.risk_tasks || []);
-
-  const evResp = await fetch('/api/v1/events?limit=60');
-  const evPayload = await evResp.json();
-  const liveTable = document.getElementById('live-event-table');
-  liveTable.innerHTML = '';
-  if (evPayload.success) {
-    const tracked = new Set(['chat_message_received', 'tool_call_requested', 'tool_result_received']);
-    const liveEvents = (evPayload.data.events || []).filter(ev => tracked.has(ev.event_type)).slice(0, 20);
-    for (const ev of liveEvents) {
+    const table = document.getElementById('run-table');
+    table.innerHTML = '';
+    for (const run of recent) {
+      const risk = run.final_risk_level || 'none';
       const row = document.createElement('tr');
       row.innerHTML = `
-        <td>${ev.ts}</td>
-        <td class="mono">${ev.run_id}</td>
-        <td>${ev.event_type}</td>
-        <td>${ev.tool_id || '-'}</td>
-        <td><span class="badge ${ev.status || ''}">${ev.status || '-'}</span></td>
+        <td>${run.run_id}</td>
+        <td>${run.task_summary || '-'}</td>
+        <td><span class="badge ${risk}">${risk}</span></td>
+        <td>
+          <a href="/api/v1/ui/runs/${run.run_id}">detail</a> |
+          <a href="/api/v1/ui/runs/${run.run_id}/report">report</a>
+        </td>
       `;
-      liveTable.appendChild(row);
+      table.appendChild(row);
     }
-  }
 
-  const stamp = new Date().toLocaleTimeString();
-  document.getElementById('live-meta').textContent = `live refresh: every ${DASHBOARD_REFRESH_MS / 1000}s, last update ${stamp}`;
+    renderTaskExamples('safe-task-list', data.free_input_examples?.safe_tasks || []);
+    renderTaskExamples('risk-task-list', data.free_input_examples?.risk_tasks || []);
+
+    const tracked = new Set(['chat_message_received', 'tool_call_requested', 'tool_result_received']);
+    const hasCursor = Boolean(dashboardLastLiveEventTs);
+    const queryParams = new URLSearchParams({
+      limit: hasCursor ? '200' : '60',
+      order: hasCursor ? 'asc' : 'desc',
+    });
+    if (hasCursor) {
+      queryParams.set('since_ts', dashboardLastLiveEventTs);
+    }
+
+    const evResp = await fetch(`/api/v1/events?${queryParams.toString()}`);
+    const evPayload = await evResp.json();
+    const liveTable = document.getElementById('live-event-table');
+
+    if (!hasCursor) {
+      liveTable.innerHTML = '';
+    }
+    if (evPayload.success) {
+      const sourceEvents = evPayload.data.events || [];
+      if (sourceEvents.length > 0) {
+        dashboardLastLiveEventTs = hasCursor
+          ? sourceEvents[sourceEvents.length - 1].ts
+          : sourceEvents[0].ts;
+      }
+
+      const trackedEvents = sourceEvents.filter(ev => tracked.has(ev.event_type));
+      if (!hasCursor) {
+        for (const ev of trackedEvents.slice(0, DASHBOARD_LIVE_EVENT_MAX_ROWS).reverse()) {
+          appendLiveEventRow(liveTable, ev);
+        }
+      } else {
+        for (const ev of trackedEvents) {
+          appendLiveEventRow(liveTable, ev);
+        }
+      }
+
+      trimLiveRows(liveTable, DASHBOARD_LIVE_EVENT_MAX_ROWS);
+    }
+
+    const stamp = new Date().toLocaleTimeString();
+    const nextSeconds = Math.round(nextDashboardDelayMs() / 1000);
+    document.getElementById('live-meta').textContent = `live refresh: ~${nextSeconds}s, last update ${stamp}`;
+    succeeded = true;
+  } catch (error) {
+    console.error('dashboard load failed', error);
   } finally {
+    if (succeeded) {
+      dashboardErrorCount = 0;
+    } else {
+      dashboardErrorCount = Math.min(dashboardErrorCount + 1, 6);
+    }
     overviewLoading = false;
+    scheduleDashboardRefresh();
   }
 }
 
+document.addEventListener('visibilitychange', scheduleDashboardRefresh);
 loadOverview();
-window.setInterval(loadOverview, DASHBOARD_REFRESH_MS);
 """
 
     return HTMLResponse(content=_shell("ClawShield Dashboard", content, script))
@@ -525,52 +592,124 @@ def run_detail_page(run_id: str) -> HTMLResponse:
 
     script_template = """
 let runLoading = false;
-const RUN_REFRESH_MS = 2000;
+let runTimer = null;
+let runErrorCount = 0;
+let runLastEventTs = null;
+let runIdleCycles = 0;
+const RUN_REFRESH_ACTIVE_MS = 3000;
+const RUN_REFRESH_IDLE_MS = 12000;
+const RUN_REFRESH_HIDDEN_MS = 25000;
+const RUN_REFRESH_MAX_BACKOFF_MS = 60000;
+const RUN_IDLE_CYCLES_THRESHOLD = 3;
+const TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled', 'stopped', 'done']);
+
+function isRunTerminal(status) {
+  return TERMINAL_STATUSES.has((status || '').toLowerCase());
+}
+
+function nextRunDelayMs() {
+  const base = document.hidden
+    ? RUN_REFRESH_HIDDEN_MS
+    : (runIdleCycles >= RUN_IDLE_CYCLES_THRESHOLD ? RUN_REFRESH_IDLE_MS : RUN_REFRESH_ACTIVE_MS);
+  const multiplier = Math.pow(2, Math.min(runErrorCount, 4));
+  return Math.min(base * multiplier, RUN_REFRESH_MAX_BACKOFF_MS);
+}
+
+function scheduleRunRefresh() {
+  if (runTimer) {
+    window.clearTimeout(runTimer);
+  }
+  runTimer = window.setTimeout(loadRun, nextRunDelayMs());
+}
+
+function trimEventRows(maxRows) {
+  const table = document.getElementById('event-table');
+  while (table.rows.length > maxRows) {
+    table.deleteRow(0);
+  }
+}
 
 async function loadRun() {
   if (runLoading) return;
   runLoading = true;
+  let succeeded = false;
+  let runIsTerminal = false;
   try {
-  const runResp = await fetch('/api/v1/runs/__RUN_ID__');
-  const runPayload = await runResp.json();
-  if (runPayload.success) {
-    const run = runPayload.data;
-    document.getElementById('run-meta').innerHTML = `
-      <div>task: ${run.task_summary || '-'}</div>
-      <div>task_type: <span class="badge">${run.task_type}</span></div>
-      <div>created_at: ${run.created_at}</div>
-    `;
-    document.getElementById('run-status').innerHTML = `
-      <div>status: <span class="badge">${run.status}</span></div>
-      <div>risk: <span class="badge ${run.final_risk_level || ''}">${run.final_risk_level || 'none'}</span></div>
-      <div>disposition: <span class="badge ${run.disposition || ''}">${run.disposition || 'unknown'}</span></div>
-    `;
-  }
+    const runResp = await fetch('/api/v1/runs/__RUN_ID__');
+    const runPayload = await runResp.json();
+    if (runPayload.success) {
+      const run = runPayload.data;
+      runIsTerminal = isRunTerminal(run.status);
+      document.getElementById('run-meta').innerHTML = `
+        <div>task: ${run.task_summary || '-'}</div>
+        <div>task_type: <span class="badge">${run.task_type}</span></div>
+        <div>created_at: ${run.created_at}</div>
+      `;
+      document.getElementById('run-status').innerHTML = `
+        <div>status: <span class="badge">${run.status}</span></div>
+        <div>risk: <span class="badge ${run.final_risk_level || ''}">${run.final_risk_level || 'none'}</span></div>
+        <div>disposition: <span class="badge ${run.disposition || ''}">${run.disposition || 'unknown'}</span></div>
+      `;
+    }
 
-  const evResp = await fetch('/api/v1/events?run_id=__RUN_ID__&order=asc&limit=300');
-  const evPayload = await evResp.json();
-  const table = document.getElementById('event-table');
-  table.innerHTML = '';
-  if (!evPayload.success) return;
+    const params = new URLSearchParams({
+      run_id: '__RUN_ID__',
+      order: 'asc',
+      limit: '300',
+    });
+    if (runLastEventTs) {
+      params.set('since_ts', runLastEventTs);
+    }
 
-  for (const ev of evPayload.data.events || []) {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${ev.ts}</td>
-      <td>${ev.event_type}</td>
-      <td>${ev.tool_id || ''} ${ev.resource_type ? '/' + ev.resource_type + ':' + (ev.resource_id || '') : ''}</td>
-      <td><span class="badge ${ev.risk_level || ''}">${ev.risk_level || '-'}</span></td>
-      <td><span class="badge ${ev.disposition || ''}">${ev.disposition || '-'}</span></td>
-    `;
-    table.appendChild(row);
-  }
+    const evResp = await fetch(`/api/v1/events?${params.toString()}`);
+    const evPayload = await evResp.json();
+    const table = document.getElementById('event-table');
+
+    if (!runLastEventTs) {
+      table.innerHTML = '';
+    }
+    if (!evPayload.success) return;
+
+    const events = evPayload.data.events || [];
+    for (const ev of events) {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${ev.ts}</td>
+        <td>${ev.event_type}</td>
+        <td>${ev.tool_id || ''} ${ev.resource_type ? '/' + ev.resource_type + ':' + (ev.resource_id || '') : ''}</td>
+        <td><span class="badge ${ev.risk_level || ''}">${ev.risk_level || '-'}</span></td>
+        <td><span class="badge ${ev.disposition || ''}">${ev.disposition || '-'}</span></td>
+      `;
+      table.appendChild(row);
+    }
+
+    if (events.length > 0) {
+      runLastEventTs = events[events.length - 1].ts;
+      runIdleCycles = 0;
+    } else {
+      runIdleCycles += 1;
+      if (!runIsTerminal) {
+        runIdleCycles = Math.min(runIdleCycles, RUN_IDLE_CYCLES_THRESHOLD);
+      }
+    }
+
+    trimEventRows(300);
+    succeeded = true;
+  } catch (error) {
+    console.error('run detail refresh failed', error);
   } finally {
+    if (succeeded) {
+      runErrorCount = 0;
+    } else {
+      runErrorCount = Math.min(runErrorCount + 1, 6);
+    }
     runLoading = false;
+    scheduleRunRefresh();
   }
 }
 
+document.addEventListener('visibilitychange', scheduleRunRefresh);
 loadRun();
-window.setInterval(loadRun, RUN_REFRESH_MS);
 """
     script = script_template.replace("__RUN_ID__", run_id)
 
@@ -652,108 +791,150 @@ def run_report_page(run_id: str) -> HTMLResponse:
 
     script_template = """
 let reportLoading = false;
-const REPORT_REFRESH_MS = 2000;
+let reportTimer = null;
+let reportErrorCount = 0;
+let reportStableCycles = 0;
+const REPORT_REFRESH_ACTIVE_MS = 5000;
+const REPORT_REFRESH_STABLE_MS = 15000;
+const REPORT_REFRESH_HIDDEN_MS = 30000;
+const REPORT_REFRESH_MAX_BACKOFF_MS = 90000;
+
+function hasFinalDisposition(report) {
+  const disposition = (report.final_disposition || '').toLowerCase();
+  return Boolean(disposition) && disposition !== 'unknown';
+}
+
+function nextReportDelayMs() {
+  const base = document.hidden
+    ? REPORT_REFRESH_HIDDEN_MS
+    : (reportStableCycles >= 2 ? REPORT_REFRESH_STABLE_MS : REPORT_REFRESH_ACTIVE_MS);
+  const multiplier = Math.pow(2, Math.min(reportErrorCount, 4));
+  return Math.min(base * multiplier, REPORT_REFRESH_MAX_BACKOFF_MS);
+}
+
+function scheduleReportRefresh() {
+  if (reportTimer) {
+    window.clearTimeout(reportTimer);
+  }
+  reportTimer = window.setTimeout(loadReport, nextReportDelayMs());
+}
 
 async function loadReport() {
   if (reportLoading) return;
   reportLoading = true;
+  let succeeded = false;
   try {
-  const resp = await fetch('/api/v1/runs/__RUN_ID__/report');
-  const payload = await resp.json();
-  if (!payload.success) return;
-  const report = payload.data;
-  const findings = report.risk_hits || [];
-  const highlightedPaths = report.graph?.highlighted_paths || [];
+    const resp = await fetch('/api/v1/runs/__RUN_ID__/report');
+    const payload = await resp.json();
+    if (!payload.success) return;
+    const report = payload.data;
+    const findings = report.risk_hits || [];
+    const highlightedPaths = report.graph?.highlighted_paths || [];
 
-  document.getElementById('report-hero').innerHTML = `<span class="muted">run-level semantic summary:</span> ${report.semantic_summary || '-'}`;
-  document.getElementById('focus-task').textContent = report.task_summary || '-';
-  document.getElementById('focus-risk').innerHTML = `<span class="badge ${report.final_risk_level || ''}">${report.final_risk_level || 'none'}</span>`;
-  document.getElementById('focus-disposition').innerHTML = `<span class="badge ${report.final_disposition || ''}">${report.final_disposition || 'unknown'}</span>`;
-  document.getElementById('focus-findings').textContent = String(findings.length);
+    document.getElementById('report-hero').innerHTML = `<span class="muted">run-level semantic summary:</span> ${report.semantic_summary || '-'}`;
+    document.getElementById('focus-task').textContent = report.task_summary || '-';
+    document.getElementById('focus-risk').innerHTML = `<span class="badge ${report.final_risk_level || ''}">${report.final_risk_level || 'none'}</span>`;
+    document.getElementById('focus-disposition').innerHTML = `<span class="badge ${report.final_disposition || ''}">${report.final_disposition || 'unknown'}</span>`;
+    document.getElementById('focus-findings').textContent = String(findings.length);
 
-  const toolCallList = document.getElementById('tool-call-list');
-  toolCallList.innerHTML = '';
-  const toolCalls = report.tool_calls || [];
-  for (const item of toolCalls) {
-    const li = document.createElement('li');
-    li.innerHTML = `<span class="mono">${item.tool_id}</span> <span class="badge ${item.risk_level || ''}">${item.risk_level || '-'}</span> <span class="badge ${item.disposition || ''}">${item.disposition || '-'}</span>`;
-    toolCallList.appendChild(li);
-  }
-  const spotlight = document.getElementById('tool-call-spotlight');
-  const riskyCall = toolCalls.find(item => ['high', 'critical', 'severe', 'medium'].includes((item.risk_level || '').toLowerCase()));
-  if (!riskyCall) {
-    spotlight.innerHTML = `<strong>spotlight:</strong> no explicit risky tool-call found.`;
-  } else {
-    spotlight.innerHTML = `
-      <strong>spotlight:</strong>
-      <span class="mono">${riskyCall.tool_id}</span>
-      <span class="badge ${riskyCall.risk_level || ''}">${riskyCall.risk_level || '-'}</span>
-      <span class="badge ${riskyCall.disposition || ''}">${riskyCall.disposition || '-'}</span>
+    const toolCallList = document.getElementById('tool-call-list');
+    toolCallList.innerHTML = '';
+    const toolCalls = report.tool_calls || [];
+    for (const item of toolCalls) {
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="mono">${item.tool_id}</span> <span class="badge ${item.risk_level || ''}">${item.risk_level || '-'}</span> <span class="badge ${item.disposition || ''}">${item.disposition || '-'}</span>`;
+      toolCallList.appendChild(li);
+    }
+    const spotlight = document.getElementById('tool-call-spotlight');
+    const riskyCall = toolCalls.find(item => ['high', 'critical', 'severe', 'medium'].includes((item.risk_level || '').toLowerCase()));
+    if (!riskyCall) {
+      spotlight.innerHTML = `<strong>spotlight:</strong> no explicit risky tool-call found.`;
+    } else {
+      spotlight.innerHTML = `
+        <strong>spotlight:</strong>
+        <span class="mono">${riskyCall.tool_id}</span>
+        <span class="badge ${riskyCall.risk_level || ''}">${riskyCall.risk_level || '-'}</span>
+        <span class="badge ${riskyCall.disposition || ''}">${riskyCall.disposition || '-'}</span>
+      `;
+    }
+
+    const resourceList = document.getElementById('resource-list');
+    resourceList.innerHTML = '';
+    for (const item of report.resources || []) {
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="mono">${item.resource_type}:${item.resource_id}</span> x${item.access_count} <span class="badge ${item.max_risk_level || ''}">${item.max_risk_level || '-'}</span>`;
+      resourceList.appendChild(li);
+    }
+
+    const timelineBox = document.getElementById('timeline');
+    timelineBox.innerHTML = '';
+    const timelineItems = report.timeline || [];
+    for (const item of timelineItems.slice(0, 14)) {
+      const div = document.createElement('div');
+      div.className = 'timeline-item';
+      div.innerHTML = `<strong>${item.title}</strong><div class="muted">${item.ts}</div><div>${item.summary}</div>`;
+      timelineBox.appendChild(div);
+    }
+    const timelineHint = document.getElementById('timeline-hint');
+    if (timelineItems.length > 14) {
+      timelineHint.innerHTML = `<span class="muted">仅展示前 14 条关键事件，完整事件请看 Run Detail 页面。</span>`;
+    } else {
+      timelineHint.innerHTML = '';
+    }
+
+    const graphSummary = report.graph?.summary || {};
+    document.getElementById('graph-summary').innerHTML = `
+      <div>finding_count: <span class="badge">${graphSummary.finding_count ?? 0}</span></div>
+      <div>final_risk: <span class="badge ${graphSummary.final_risk_level || ''}">${graphSummary.final_risk_level || 'none'}</span></div>
+      <div>nodes: ${(report.graph?.nodes || []).length} | edges: ${(report.graph?.edges || []).length}</div>
     `;
-  }
 
-  const resourceList = document.getElementById('resource-list');
-  resourceList.innerHTML = '';
-  for (const item of report.resources || []) {
-    const li = document.createElement('li');
-    li.innerHTML = `<span class="mono">${item.resource_type}:${item.resource_id}</span> x${item.access_count} <span class="badge ${item.max_risk_level || ''}">${item.max_risk_level || '-'}</span>`;
-    resourceList.appendChild(li);
-  }
+    const highlight = document.getElementById('graph-highlight');
+    highlight.innerHTML = '';
+    for (const path of highlightedPaths) {
+      const li = document.createElement('li');
+      const rendered = path.map(n => n.includes('risk:') ? `<span class="risk-node">${n}</span>` : n).join(' -> ');
+      li.innerHTML = rendered;
+      highlight.appendChild(li);
+    }
 
-  const timelineBox = document.getElementById('timeline');
-  timelineBox.innerHTML = '';
-  const timelineItems = report.timeline || [];
-  for (const item of timelineItems.slice(0, 14)) {
-    const div = document.createElement('div');
-    div.className = 'timeline-item';
-    div.innerHTML = `<strong>${item.title}</strong><div class="muted">${item.ts}</div><div>${item.summary}</div>`;
-    timelineBox.appendChild(div);
-  }
-  const timelineHint = document.getElementById('timeline-hint');
-  if (timelineItems.length > 14) {
-    timelineHint.innerHTML = `<span class="muted">仅展示前 14 条关键事件，完整事件请看 Run Detail 页面。</span>`;
-  } else {
-    timelineHint.innerHTML = '';
-  }
+    const riskHitList = document.getElementById('risk-hit-list');
+    riskHitList.innerHTML = '';
+    for (const hit of findings) {
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="badge ${hit.risk_level}">${hit.risk_level}</span> <strong>${hit.chain_id}</strong><br><span class="muted">${hit.explanation || ''}</span>`;
+      riskHitList.appendChild(li);
+    }
 
-  const graphSummary = report.graph?.summary || {};
-  document.getElementById('graph-summary').innerHTML = `
-    <div>finding_count: <span class="badge">${graphSummary.finding_count ?? 0}</span></div>
-    <div>final_risk: <span class="badge ${graphSummary.final_risk_level || ''}">${graphSummary.final_risk_level || 'none'}</span></div>
-    <div>nodes: ${(report.graph?.nodes || []).length} | edges: ${(report.graph?.edges || []).length}</div>
-  `;
+    document.getElementById('conclusion').innerHTML = `
+      <div>task: <strong>${report.task_summary || '-'}</strong></div>
+      <div>semantic: ${report.semantic_summary || '-'}</div>
+      <div>disposition: <span class="badge ${report.final_disposition || ''}">${report.final_disposition || 'unknown'}</span></div>
+      <div>disposition summary: ${report.disposition_summary || '-'}</div>
+      <div style="margin-top:8px;">${report.conclusion}</div>
+    `;
 
-  const highlight = document.getElementById('graph-highlight');
-  highlight.innerHTML = '';
-  for (const path of highlightedPaths) {
-    const li = document.createElement('li');
-    const rendered = path.map(n => n.includes('risk:') ? `<span class="risk-node">${n}</span>` : n).join(' -> ');
-    li.innerHTML = rendered;
-    highlight.appendChild(li);
-  }
-
-  const riskHitList = document.getElementById('risk-hit-list');
-  riskHitList.innerHTML = '';
-  for (const hit of findings) {
-    const li = document.createElement('li');
-    li.innerHTML = `<span class="badge ${hit.risk_level}">${hit.risk_level}</span> <strong>${hit.chain_id}</strong><br><span class="muted">${hit.explanation || ''}</span>`;
-    riskHitList.appendChild(li);
-  }
-
-  document.getElementById('conclusion').innerHTML = `
-    <div>task: <strong>${report.task_summary || '-'}</strong></div>
-    <div>semantic: ${report.semantic_summary || '-'}</div>
-    <div>disposition: <span class="badge ${report.final_disposition || ''}">${report.final_disposition || 'unknown'}</span></div>
-    <div>disposition summary: ${report.disposition_summary || '-'}</div>
-    <div style="margin-top:8px;">${report.conclusion}</div>
-  `;
+    if (hasFinalDisposition(report)) {
+      reportStableCycles = Math.min(reportStableCycles + 1, 4);
+    } else {
+      reportStableCycles = 0;
+    }
+    succeeded = true;
+  } catch (error) {
+    console.error('report refresh failed', error);
   } finally {
+    if (succeeded) {
+      reportErrorCount = 0;
+    } else {
+      reportErrorCount = Math.min(reportErrorCount + 1, 6);
+    }
     reportLoading = false;
+    scheduleReportRefresh();
   }
 }
 
+document.addEventListener('visibilitychange', scheduleReportRefresh);
 loadReport();
-window.setInterval(loadReport, REPORT_REFRESH_MS);
 """
     script = script_template.replace("__RUN_ID__", run_id)
 

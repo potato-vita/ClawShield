@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Generator
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -37,7 +37,24 @@ def init_engine() -> Engine:
     if settings.database_url.startswith("sqlite"):
         connect_args["check_same_thread"] = False
 
-    _engine = create_engine(settings.database_url, future=True, connect_args=connect_args)
+    _engine = create_engine(
+        settings.database_url,
+        future=True,
+        connect_args=connect_args,
+        pool_pre_ping=True,
+    )
+
+    if settings.database_url.startswith("sqlite"):
+        @event.listens_for(_engine, "connect")
+        def _set_sqlite_pragmas(dbapi_connection, connection_record) -> None:  # type: ignore[no-untyped-def]
+            del connection_record
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.execute("PRAGMA temp_store=MEMORY")
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+
     _session_factory = sessionmaker(
         bind=_engine,
         autocommit=False,

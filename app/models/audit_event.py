@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, Text
+from sqlalchemy import DateTime, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, utc_now
@@ -10,6 +10,10 @@ from app.models.base import Base, TimestampMixin, utc_now
 
 class AuditEvent(TimestampMixin, Base):
     __tablename__ = "audit_events"
+    __table_args__ = (
+        Index("ix_audit_events_run_id_ts", "run_id", "ts"),
+        Index("ix_audit_events_ts", "ts"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     event_id: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)

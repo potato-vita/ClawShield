@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 from app.repositories.event_repo import EventRepository, event_repository
@@ -63,6 +65,7 @@ class AuditService:
         risk_level: str | None = None,
         tool_id: str | None = None,
         resource_type: str | None = None,
+        since_ts: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
         order: str = "desc",
@@ -74,6 +77,7 @@ class AuditService:
             risk_level=risk_level,
             tool_id=tool_id,
             resource_type=resource_type,
+            since_ts=since_ts,
             limit=limit,
             offset=offset,
             order=order,
