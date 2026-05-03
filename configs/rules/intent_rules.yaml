@@ -1,0 +1,101 @@
+version: 1
+
+# Rule-based task intent and goal contract templates.
+# This file is used by app/services/goal_service.py in P0 (no external LLM).
+
+rules:
+  - intent: summary
+    keywords:
+      - "summar"
+      - "summary"
+      - "总结"
+      - "概括"
+      - "归纳"
+    allowed_action_types: ["file_read"]
+    allowed_tools: ["workspace_reader", "summarizer"]
+    allowed_resource_scopes: ["./workspace/**"]
+    forbidden_actions: ["shell_exec"]
+    forbidden_effects: ["external_upload", "shell_exec"]
+    confidence: 0.75
+
+  - intent: external_invoke
+    keywords:
+      - "调用接口"
+      - "api"
+      - "weather"
+      - "天气"
+      - "查询天气"
+      - "http"
+    allowed_action_types: ["http"]
+    allowed_tools: ["http_fetcher"]
+    allowed_resource_scopes: []
+    forbidden_actions: ["shell_exec"]
+    forbidden_effects: ["shell_exec"]
+    confidence: 0.7
+
+  - intent: analysis
+    keywords:
+      - "analy"
+      - "explain"
+      - "分析"
+      - "解释"
+    allowed_action_types: ["file_read"]
+    allowed_tools: ["workspace_reader"]
+    allowed_resource_scopes: ["./workspace/**"]
+    forbidden_actions: ["shell_exec"]
+    forbidden_effects: ["external_upload", "shell_exec"]
+    confidence: 0.7
+
+  - intent: qa
+    keywords:
+      - "what"
+      - "why"
+      - "how"
+      - "什么"
+      - "为什么"
+      - "怎么"
+      - "?"
+    allowed_action_types: ["file_read"]
+    allowed_tools: ["workspace_reader"]
+    allowed_resource_scopes: ["./workspace/**"]
+    forbidden_actions: ["shell_exec"]
+    forbidden_effects: ["external_upload", "shell_exec"]
+    confidence: 0.6
+
+  - intent: file_process
+    keywords:
+      - "convert"
+      - "extract"
+      - "parse"
+      - "处理"
+      - "转换"
+      - "提取"
+    allowed_action_types: ["file_read"]
+    allowed_tools: ["workspace_reader"]
+    allowed_resource_scopes: ["./workspace/**"]
+    forbidden_actions: ["shell_exec"]
+    forbidden_effects: ["external_upload", "shell_exec"]
+    confidence: 0.6
+
+  - intent: admin_op
+    keywords:
+      - "删除"
+      - "rm "
+      - "sudo"
+      - "install"
+      - "apt "
+      - "pip install"
+    allowed_action_types: ["tool_call"]
+    allowed_tools: ["exec"]
+    allowed_resource_scopes: []
+    forbidden_actions: []
+    forbidden_effects: []
+    confidence: 0.55
+
+defaults:
+  allowed_action_types: []
+  allowed_tools: []
+  allowed_resource_scopes: []
+  forbidden_actions: []
+  forbidden_effects: []
+  confidence: 0.5
