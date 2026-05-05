@@ -1,0 +1,11 @@
+# Round 3 minimal dialog rail
+# States:
+# - task_received
+# - analyzing
+# - planning_tool_use
+# - blocked
+
+define flow dialog
+  # This flow is intentionally minimal in V1. Runtime state transitions
+  # are produced by app/services/guardrails_service.py and persisted as events.
+  bot respond "dialog rail active"

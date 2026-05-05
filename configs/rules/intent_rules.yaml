@@ -1,0 +1,80 @@
+version: v1
+
+intent_detection:
+  summary:
+    keywords: ["总结", "summarize", "summary", "概括", "提炼", "摘要"]
+  analysis:
+    keywords: ["分析", "analyze", "analysis", "review", "评估", "诊断"]
+  qa:
+    keywords: ["问答", "qa", "question", "answer", "解释", "what", "why", "how"]
+  file_process:
+    keywords: ["文件处理", "convert", "transform", "extract", "parse", "整理文件"]
+  external_invoke:
+    keywords: ["调用接口", "api", "http", "webhook", "天气", "查询天气", "third-party"]
+  admin_op:
+    keywords: ["管理员", "admin", "权限", "部署", "重启", "shell", "执行命令"]
+
+profiles:
+  summary:
+    allowed_action_types: ["file_read", "tool_call"]
+    allowed_tools: ["workspace_reader", "file_reader", "repo_search"]
+    allowed_resource_scopes: ["workspace/**", "repo/**"]
+    expected_outputs: ["summary_text"]
+    forbidden_actions: ["shell_exec", "external_upload"]
+    forbidden_effects: ["delete", "external_upload", "credential_exfiltration"]
+    risk_constraints: ["no_sensitive_env", "no_external_upload"]
+    confidence: 0.86
+  analysis:
+    allowed_action_types: ["file_read", "tool_call"]
+    allowed_tools: ["workspace_reader", "file_reader", "repo_search"]
+    allowed_resource_scopes: ["workspace/**", "repo/**"]
+    expected_outputs: ["analysis_report"]
+    forbidden_actions: ["shell_exec"]
+    forbidden_effects: ["external_upload", "credential_exfiltration"]
+    risk_constraints: ["least_privilege_read_only"]
+    confidence: 0.82
+  qa:
+    allowed_action_types: ["file_read", "tool_call"]
+    allowed_tools: ["workspace_reader", "repo_search"]
+    allowed_resource_scopes: ["workspace/**", "repo/**"]
+    expected_outputs: ["answer_text"]
+    forbidden_actions: ["shell_exec", "external_upload"]
+    forbidden_effects: ["external_upload", "credential_exfiltration"]
+    risk_constraints: ["context_first_then_answer"]
+    confidence: 0.78
+  file_process:
+    allowed_action_types: ["file_read", "file_write", "tool_call"]
+    allowed_tools: ["workspace_reader", "workspace_writer", "file_transformer"]
+    allowed_resource_scopes: ["workspace/**"]
+    expected_outputs: ["processed_file", "process_summary"]
+    forbidden_actions: ["external_upload"]
+    forbidden_effects: ["credential_exfiltration"]
+    risk_constraints: ["workspace_only"]
+    confidence: 0.76
+  external_invoke:
+    allowed_action_types: ["http", "tool_call"]
+    allowed_tools: ["http_client", "api_caller"]
+    allowed_resource_scopes: ["https://*", "http://*"]
+    expected_outputs: ["external_response"]
+    forbidden_actions: ["shell_exec"]
+    forbidden_effects: ["credential_exfiltration"]
+    risk_constraints: ["trusted_domain_preferred"]
+    confidence: 0.72
+  admin_op:
+    allowed_action_types: ["shell_exec", "file_read", "file_write", "tool_call"]
+    allowed_tools: ["shell_executor", "workspace_reader", "workspace_writer"]
+    allowed_resource_scopes: ["workspace/**", "system/**"]
+    expected_outputs: ["admin_action_result"]
+    forbidden_actions: []
+    forbidden_effects: []
+    risk_constraints: ["require_human_review"]
+    confidence: 0.6
+  unknown:
+    allowed_action_types: ["file_read", "tool_call"]
+    allowed_tools: []
+    allowed_resource_scopes: ["workspace/**"]
+    expected_outputs: ["structured_response"]
+    forbidden_actions: ["shell_exec", "external_upload"]
+    forbidden_effects: ["external_upload", "credential_exfiltration", "destructive_delete", "http_request", "env_read"]
+    risk_constraints: ["conservative_default"]
+    confidence: 0.5

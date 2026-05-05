@@ -1,0 +1,8 @@
+app_name: ClawShield
+app_version: 0.1.0
+app_env: dev
+host: 127.0.0.1
+port: 8000
+database_url: sqlite:///./data/clawshield.db
+log_level: INFO
+openclaw_auto_launch: false

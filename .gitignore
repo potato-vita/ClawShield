@@ -1,0 +1,30 @@
+# Python cache / artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local data and runtime files
+*.db
+*.sqlite
+*.sqlite3
+logs/
+*.log
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store

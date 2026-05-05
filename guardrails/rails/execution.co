@@ -1,0 +1,9 @@
+# Round 3 minimal execution rail
+# Candidate tool calls are evaluated by Python actions:
+# - task_context_actions.get_task_context
+# - policy_actions.evaluate_candidate_action
+# - audit_actions.build_semantic_events
+
+define flow execution
+  # The runtime decision is produced by the backend bridge endpoint.
+  bot respond "execution rail active"

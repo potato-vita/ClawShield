@@ -1,0 +1,84 @@
+weights:
+  goal_relevance: 0.28
+  state_legality: 0.2
+  resource_necessity: 0.18
+  effect_safety: 0.22
+  reason_support: 0.12
+
+thresholds:
+  allow: 0.8
+  review: 0.55
+
+penalties:
+  untrusted_domain: 0.08
+  workspace_scope_violation: 0.08
+  weak_justification: 0.05
+  exfiltration_risk: 0.2
+  multi_stage_exfiltration: 0.12
+
+task_intent_profiles:
+  summary:
+    weights:
+      goal_relevance: 0.31
+      state_legality: 0.22
+      resource_necessity: 0.2
+      effect_safety: 0.18
+      reason_support: 0.09
+    thresholds:
+      allow: 0.82
+      review: 0.58
+  analysis:
+    weights:
+      goal_relevance: 0.3
+      state_legality: 0.21
+      resource_necessity: 0.2
+      effect_safety: 0.19
+      reason_support: 0.1
+    thresholds:
+      allow: 0.82
+      review: 0.58
+  qa:
+    weights:
+      goal_relevance: 0.3
+      state_legality: 0.22
+      resource_necessity: 0.2
+      effect_safety: 0.18
+      reason_support: 0.1
+    thresholds:
+      allow: 0.82
+      review: 0.58
+  external_invoke:
+    weights:
+      goal_relevance: 0.24
+      state_legality: 0.2
+      resource_necessity: 0.2
+      effect_safety: 0.24
+      reason_support: 0.12
+    thresholds:
+      allow: 0.78
+      review: 0.55
+  file_process:
+    weights:
+      goal_relevance: 0.28
+      state_legality: 0.2
+      resource_necessity: 0.2
+      effect_safety: 0.2
+      reason_support: 0.12
+    thresholds:
+      allow: 0.8
+      review: 0.56
+  unknown:
+    weights:
+      goal_relevance: 0.34
+      state_legality: 0.24
+      resource_necessity: 0.2
+      effect_safety: 0.16
+      reason_support: 0.06
+    thresholds:
+      allow: 0.86
+      review: 0.62
+
+risk_by_decision:
+  allow: low
+  review: medium
+  deny: high

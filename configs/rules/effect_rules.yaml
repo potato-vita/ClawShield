@@ -1,0 +1,14 @@
+redlines:
+  - id: summary_external_upload
+    task_intents: ["summary", "analysis", "qa"]
+    effect_types: ["http_request", "upload"]
+    condition: exfiltration_risk
+    reason: "summary_or_analysis_task_should_not_exfiltrate_data"
+  - id: unknown_http_or_env_block
+    task_intents: ["unknown"]
+    effect_types: ["http_request", "upload", "download", "env_read", "execute"]
+    reason: "unknown_task_intent_must_not_access_http_or_env_or_execute"
+  - id: critical_effect_block
+    task_intents: ["summary", "analysis", "qa", "unknown"]
+    impact_levels: ["critical"]
+    reason: "critical_effect_is_blocked"

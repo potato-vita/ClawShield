@@ -1,0 +1,35 @@
+initial_state: analyzing
+
+default_allowed_effects:
+  - read
+  - inspect
+  - summarize
+
+state_profiles:
+  analyzing:
+    allowed_action_types: ["file_read", "tool_call"]
+    allowed_tools: ["workspace_reader", "repo_search", "file_reader"]
+    allowed_effects: ["read", "inspect", "summarize"]
+  tool_planning:
+    allowed_action_types: ["tool_call", "file_read"]
+    allowed_tools: ["workspace_reader", "repo_search", "file_reader"]
+    allowed_effects: ["read", "plan"]
+  tool_executing:
+    allowed_action_types: ["tool_call", "file_read"]
+    allowed_tools: ["workspace_reader", "repo_search", "file_reader"]
+    allowed_effects: ["read", "execute"]
+  result_review:
+    allowed_action_types: ["tool_call", "file_read"]
+    allowed_tools: ["workspace_reader", "repo_search"]
+    allowed_effects: ["read", "summarize", "verify"]
+  finished:
+    allowed_action_types: []
+    allowed_tools: []
+    allowed_effects: []
+
+allowed_transitions:
+  analyzing: ["tool_planning", "finished"]
+  tool_planning: ["tool_executing", "analyzing", "finished"]
+  tool_executing: ["result_review", "analyzing", "finished"]
+  result_review: ["tool_planning", "finished", "analyzing"]
+  finished: ["analyzing"]

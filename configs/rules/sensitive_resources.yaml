@@ -1,0 +1,57 @@
+version: v1
+
+domain_trust:
+  trusted_domains:
+    - api.openai.com
+    - github.com
+    - pypi.org
+    - files.pythonhosted.org
+  internal_domains:
+    - localhost
+    - 127.0.0.1
+    - .local
+    - .internal
+
+detectors:
+  secret_markers:
+    - "@secret"
+    - api_key
+    - apikey
+    - token
+    - password
+    - credential
+    - "authorization:"
+    - "bearer "
+  outbound_tokens:
+    - "curl "
+    - "wget "
+    - "https://"
+    - "http://"
+    - "scp "
+    - "sftp "
+    - "rsync "
+    - "nc "
+    - "netcat "
+  encode_tokens:
+    - base64
+    - "openssl enc"
+    - xxd
+  compress_tokens:
+    - "tar "
+    - "zip "
+    - gzip
+    - bzip2
+    - "xz "
+
+rules:
+  - rule_id: env-sensitive-keys
+    enabled: true
+    resource_type: env
+    match_type: pattern
+    patterns:
+      - "*_KEY"
+      - "*_TOKEN"
+      - "*_SECRET"
+    sensitivity_level: high
+    labels:
+      - credential

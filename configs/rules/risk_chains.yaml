@@ -1,0 +1,51 @@
+version: v2
+rules:
+  - chain_id: chain_workspace_escape
+    name: Workspace Boundary Escape
+    enabled: true
+    task_types: ["analysis"]
+    sequence:
+      - event_type: resource_access_requested
+        resource_type: file
+        workspace_escape: true
+    window_seconds: 300
+    risk_level: high
+    disposition: deny
+    explain: Analysis task tried to access a file outside workspace boundary.
+
+  - chain_id: chain_env_then_http
+    name: Sensitive Env Read Followed By External Request
+    enabled: true
+    sequence:
+      - event_type: resource_access_requested
+        resource_type: env
+        sensitive_env: true
+      - event_type: resource_access_requested
+        resource_type: http
+    window_seconds: 600
+    risk_level: high
+    disposition: deny
+    explain: Sensitive environment variable was read before an external HTTP request.
+
+  - chain_id: chain_analysis_high_risk_tool
+    name: Analysis Task Triggered High-Risk Tool
+    enabled: true
+    task_types: ["analysis"]
+    sequence:
+      - event_type: tool_call_requested
+        high_risk_tool: true
+    window_seconds: 300
+    risk_level: medium
+    disposition: warn
+    explain: Analysis task invoked a high-risk third-party tool.
+
+  - chain_id: goal_mismatch_tool_call
+    name: Goal Mismatch Tool Call
+    enabled: true
+    sequence:
+      - event_type_in: ["alignment_blocked", "alignment_evaluation_completed"]
+        alignment_decision: deny
+    window_seconds: 600
+    risk_level: high
+    disposition: deny
+    explain: Tool call is not aligned with the declared task goal and step context.

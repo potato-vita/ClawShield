@@ -1,0 +1,12 @@
+version: v1
+rules:
+  - rule_id: workspace-reader-boundary
+    enabled: true
+    tool_id: workspace_reader
+    resource_type: file
+    allowed_patterns:
+      - "./workspace/**"
+    denied_patterns:
+      - "../**"
+    workspace_only: true
+    reason: workspace reader must stay inside workspace
