@@ -4,7 +4,7 @@ import type { RawMessageHookInput } from "../types/hook.js";
 import { createId } from "../utils/id.js";
 import { normalizeContext } from "./context.js";
 import { shortHash } from "../sanitizer/hash.js";
-import { previewText, summarizeValue } from "../sanitizer/preview.js";
+import { summarizeValue } from "../sanitizer/preview.js";
 import { redactObject, redactText } from "../sanitizer/redact.js";
 
 export function normalizeMessage(
@@ -16,7 +16,7 @@ export function normalizeMessage(
   config: PluginConfig,
 ): TraceEvent {
   const context = normalizeContext(input);
-  const content = config.debug_full_payload ? input.content : redactText(previewText(input.content));
+  const content = config.debug_full_payload ? input.content : redactText(input.content);
 
   return {
     event_id: createId("evt"),

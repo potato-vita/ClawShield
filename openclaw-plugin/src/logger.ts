@@ -14,18 +14,10 @@ const levelOrder: Record<LogLevel, number> = {
   error: 40,
 };
 
-export function createLogger(
-  namespace = "traceshield",
-  minimumLevel: LogLevel = "info",
-): Logger {
-  const shouldLog = (level: LogLevel): boolean =>
-    levelOrder[level] >= levelOrder[minimumLevel];
+export function createLogger(namespace = "traceshield", minimumLevel: LogLevel = "info"): Logger {
+  const shouldLog = (level: LogLevel): boolean => levelOrder[level] >= levelOrder[minimumLevel];
 
-  const write = (
-    level: LogLevel,
-    message: string,
-    meta?: Record<string, unknown>,
-  ): void => {
+  const write = (level: LogLevel, message: string, meta?: Record<string, unknown>): void => {
     if (!shouldLog(level)) {
       return;
     }

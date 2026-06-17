@@ -2,6 +2,8 @@
 
 TraceShield OpenClaw 插件是一个运行时安全门，用来在 OpenClaw 执行工具调用和事件采集时做同步审计、异步留痕、脱敏处理和本地降级。仓库里同时包含一个用于演示和联调的 Mock Core，用来模拟 TraceShield Core 的 `ALLOW / WARN / ASK / BLOCK` 决策。
 
+当前状态：插件 MVP 已完成，已在本机真实 OpenClaw Gateway 上验证过危险命令阻断；后续真实环境的更多手工验证结果请继续记录到 [真实 OpenClaw 接入验证](doc/real-openclaw-integration.md)。
+
 ## 这套项目解决什么问题
 
 - 在 `before_tool_call` 阶段做同步审计，尽量把高风险操作拦在执行前。
@@ -97,6 +99,8 @@ npm run demo:openclaw
 
 这个脚本会展示插件 ID、版本、Hook 注册情况、队列状态，以及不同工具调用的审计结果。
 
+注意：`demo:openclaw` 是模拟/本地链路演示，不等于真实 OpenClaw Gateway 加载验证。真实接入步骤和记录表见 [真实 OpenClaw 接入验证](doc/real-openclaw-integration.md)。
+
 ## 配置
 
 ### mock-core
@@ -123,15 +127,28 @@ npm run demo:openclaw
 | `local_allow_tool_kinds` | `file_read` | Core 故障时允许直接放行的只读工具类别。 |
 | `high_risk_tool_kinds` | 见源码默认值 | Core 故障时默认 fail-closed 的高风险工具类别。 |
 
-可通过 `openclaw.plugin.json`、OpenClaw 配置源或环境变量覆盖部分运行参数。当前代码支持的环境变量包括：
+可通过 `openclaw.plugin.json`、OpenClaw 配置源或环境变量覆盖运行参数。配置优先级为：OpenClaw plugin config source → 环境变量 → 默认值。当前代码支持的环境变量包括：
 
 - `TRACESHIELD_PLUGIN_ID`
 - `TRACESHIELD_GATEWAY_ID`
 - `TRACESHIELD_CORE_BASE_URL`
 - `TRACESHIELD_AUDIT_TIMEOUT_MS`
+- `TRACESHIELD_EVENT_FLUSH_TIMEOUT_MS`
+- `TRACESHIELD_EVENT_FLUSH_INTERVAL_MS`
+- `TRACESHIELD_DISK_QUEUE_DIR`
+- `TRACESHIELD_MEMORY_QUEUE_MAX_EVENTS`
+- `TRACESHIELD_LOCAL_ALLOW_TOOL_KINDS`
+- `TRACESHIELD_HIGH_RISK_TOOL_KINDS`
 - `TRACESHIELD_MODE`
 - `TRACESHIELD_FALLBACK_ENABLED`
 - `TRACESHIELD_DEBUG_FULL_PAYLOAD`
+
+列表类环境变量使用英文逗号分隔，例如：
+
+```bash
+TRACESHIELD_LOCAL_ALLOW_TOOL_KINDS=file_read,read_only
+TRACESHIELD_HIGH_RISK_TOOL_KINDS=shell_exec,file_write,file_delete,network_request
+```
 
 ## 核心能力
 
@@ -166,6 +183,8 @@ npm run demo:openclaw
 在 `openclaw-plugin/` 下可运行：
 
 ```bash
+npm run format
+npm run format:check
 npm run typecheck
 npm run test
 npm run build
@@ -187,9 +206,10 @@ npm run dev
 - [决策结构](openclaw-plugin/docs/decision-schema.md)
 - [演示脚本](openclaw-plugin/docs/demo-script.md)
 - [测试报告](openclaw-plugin/docs/plugin-test-report.md)
+- [真实 OpenClaw 接入验证](doc/real-openclaw-integration.md)
 
 ## 适合继续做什么
 
 1. 把 `mock-core` 升级成更完整的审计服务。
-2. 把 `openclaw-plugin` 的配置接入真实 OpenClaw 环境。
-3. 补充一份安装到 OpenClaw 的完整演示截图或录屏。
+2. 补充更多真实 OpenClaw 手工验证记录，例如 `traceshield_status` 工具 UI 调用截图或日志。
+3. 将真实 TraceShield Core 接入当前插件配置。

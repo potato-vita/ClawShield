@@ -67,6 +67,8 @@ export function formatTraceShieldBlockReason(reason: string, decision?: AuditDec
     lines.push(`Matched rules: ${decision.matched_rules.join(", ")}`);
   }
 
-  lines.push("User-visible status: TraceShield stopped this operation. Do not summarize it as completed.");
+  lines.push(
+    "User-visible status: TraceShield stopped this operation. Do not summarize it as completed.",
+  );
   return lines.join("\n");
 }

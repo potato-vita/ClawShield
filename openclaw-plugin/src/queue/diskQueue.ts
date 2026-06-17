@@ -36,9 +36,7 @@ export class DiskQueue {
   }
 
   async deleteMany(events: TraceEvent[]): Promise<void> {
-    await Promise.all(
-      events.map((event) => rm(this.pathFor(event.event_id), { force: true })),
-    );
+    await Promise.all(events.map((event) => rm(this.pathFor(event.event_id), { force: true })));
   }
 
   private pathFor(eventId: string): string {

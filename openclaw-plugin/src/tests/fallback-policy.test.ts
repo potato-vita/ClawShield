@@ -6,7 +6,10 @@ import type { AuditRequest } from "../types/event.js";
 
 describe("fallback policy", () => {
   it("blocks high-risk tools when Core is unavailable", () => {
-    const decision = evaluateFallbackPolicy(request({ tool_kind: "shell_exec" }), defaultPluginConfig);
+    const decision = evaluateFallbackPolicy(
+      request({ tool_kind: "shell_exec" }),
+      defaultPluginConfig,
+    );
     expect(decision.decision).toBe("BLOCK");
     expect(decision.fallback_used).toBe(true);
   });

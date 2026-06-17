@@ -1,4 +1,4 @@
-# Round 11 - Real OpenClaw Visible Tool
+# Round 03 — 可见的 OpenClaw 工具
 
 Time: 2026-06-17 14:19 CST
 

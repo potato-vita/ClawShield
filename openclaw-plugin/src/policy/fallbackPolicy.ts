@@ -20,10 +20,7 @@ export function evaluateFallbackPolicy(
     ]);
   }
 
-  if (
-    config.local_allow_tool_kinds.includes(request.tool_kind)
-    && cache.hasAllow(request)
-  ) {
+  if (config.local_allow_tool_kinds.includes(request.tool_kind) && cache.hasAllow(request)) {
     return {
       decision: "ALLOW",
       risk_level: "low",
@@ -64,14 +61,22 @@ function block(
 }
 
 function isSensitiveRead(request: AuditRequest): boolean {
-  if (request.tool_kind !== "file_read") {
+  // 覆盖 file_read 和通过 shell 读取敏感文件的场景
+  if (request.tool_kind !== "file_read" && request.tool_kind !== "shell_exec") {
     return false;
   }
 
-  const target = `${request.resource_hint ?? ""} ${JSON.stringify(request.raw_params)}`.toLowerCase();
-  return target.includes(".env")
-    || target.includes("id_rsa")
-    || target.includes("id_dsa")
-    || target.includes("id_ed25519")
-    || target.includes("private_key");
+  const target =
+    `${request.resource_hint ?? ""} ${JSON.stringify(request.raw_params)}`.toLowerCase();
+  return (
+    target.includes(".env") ||
+    target.includes("id_rsa") ||
+    target.includes("id_dsa") ||
+    target.includes("id_ed25519") ||
+    target.includes("private_key") ||
+    target.includes("/etc/shadow") ||
+    target.includes("/etc/passwd") ||
+    /\bcat\b.*\b(\.env|\.pem|private|secret|token)\b/i.test(target) ||
+    /\bcurl\b.*\b(\.env|\.pem|private|secret|token)\b/i.test(target)
+  );
 }

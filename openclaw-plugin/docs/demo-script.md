@@ -70,7 +70,11 @@ npm run demo:openclaw
 工具调用参数：
 
 ```json
-{ "tool_name": "http_request", "tool_kind": "network_request", "params": { "url": "https://example.com" } }
+{
+  "tool_name": "http_request",
+  "tool_kind": "network_request",
+  "params": { "url": "https://example.com" }
+}
 ```
 
 预期结果：Mock Core 返回 `ASK`，插件触发人工确认。

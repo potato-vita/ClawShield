@@ -22,17 +22,14 @@ export class EventClient {
     const timeout = setTimeout(() => controller.abort(), this.options.timeoutMs);
 
     try {
-      const response = await this.fetchImpl(
-        new URL("/v1/events/batch", this.options.baseUrl),
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({ events }),
-          signal: controller.signal,
+      const response = await this.fetchImpl(new URL("/v1/events/batch", this.options.baseUrl), {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
         },
-      );
+        body: JSON.stringify({ events }),
+        signal: controller.signal,
+      });
 
       if (!response.ok) {
         throw new Error(`Core event flush failed with HTTP ${response.status}`);

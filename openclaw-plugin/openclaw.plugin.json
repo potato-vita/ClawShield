@@ -54,6 +54,24 @@
       "disk_queue_dir": {
         "type": "string",
         "description": "Disk queue directory for async event retry."
+      },
+      "memory_queue_max_events": {
+        "type": "number",
+        "description": "Maximum number of events kept in memory before older entries are evicted."
+      },
+      "local_allow_tool_kinds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Read-only tool kinds that may be locally allowed during fallback."
+      },
+      "high_risk_tool_kinds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Tool kinds that fail closed when Core is unavailable."
       }
     }
   },

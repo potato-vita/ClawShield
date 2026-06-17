@@ -37,21 +37,21 @@
 
 ## AuditRequest
 
-| 字段 | 类型 | 必填 | 用途 |
-| --- | --- | --- | --- |
-| request_id | string | 是 | 审计请求唯一 ID。 |
-| schema_version | "v1" | 是 | 请求结构版本。 |
-| session_id | string | 是 | 会话 ID。 |
-| run_id | string | 是 | 单次 Agent 运行 ID。 |
-| trace_id | string | 是 | 链路 ID。 |
-| tool_call_id | string | 是 | OpenClaw 工具调用 ID。 |
-| tool_name | string | 是 | 工具名称。 |
-| tool_kind | string | 是 | 工具类别，例如 shell_exec、file_read。 |
-| raw_params | object | 是 | 原始参数，仅用于同步审计，不进入普通日志。 |
-| param_summary | object | 是 | 参数摘要。 |
-| resource_hint | string | 否 | 文件路径、URL、命令目标等资源提示。 |
-| risk_hint | string | 否 | 本地风险提示。 |
-| context | object | 是 | 用户目标、消息哈希、工作区根目录等上下文。 |
+| 字段           | 类型   | 必填 | 用途                                       |
+| -------------- | ------ | ---- | ------------------------------------------ |
+| request_id     | string | 是   | 审计请求唯一 ID。                          |
+| schema_version | "v1"   | 是   | 请求结构版本。                             |
+| session_id     | string | 是   | 会话 ID。                                  |
+| run_id         | string | 是   | 单次 Agent 运行 ID。                       |
+| trace_id       | string | 是   | 链路 ID。                                  |
+| tool_call_id   | string | 是   | OpenClaw 工具调用 ID。                     |
+| tool_name      | string | 是   | 工具名称。                                 |
+| tool_kind      | string | 是   | 工具类别，例如 shell_exec、file_read。     |
+| raw_params     | object | 是   | 原始参数，仅用于同步审计，不进入普通日志。 |
+| param_summary  | object | 是   | 参数摘要。                                 |
+| resource_hint  | string | 否   | 文件路径、URL、命令目标等资源提示。        |
+| risk_hint      | string | 否   | 本地风险提示。                             |
+| context        | object | 是   | 用户目标、消息哈希、工作区根目录等上下文。 |
 
 ## TraceEvent
 
@@ -63,21 +63,21 @@
 
 ## PluginConfig
 
-| 字段 | 类型 | 默认值 | 用途 |
-| --- | --- | --- | --- |
-| plugin_id | string | traceshield-security-plugin | 插件 ID。 |
-| gateway_id | string | 无 | 网关或宿主实例 ID。 |
-| core_base_url | string | http://127.0.0.1:8787 | Core / Mock Core 地址。 |
-| audit_timeout_ms | number | 400 | 同步审计超时时间。 |
-| event_flush_timeout_ms | number | 1000 | 异步事件上报超时时间。 |
-| event_flush_interval_ms | number | 2000 | 异步事件批量上报间隔。 |
-| mode | development / demo / production | development | 插件运行模式。 |
-| fallback_enabled | boolean | true | Core 不可用时是否启用本地策略。 |
-| debug_full_payload | boolean | false | 是否允许上传完整载荷，默认关闭。 |
-| disk_queue_dir | string | .traceshield/events | 磁盘队列目录。 |
-| memory_queue_max_events | number | 1000 | 内存队列最大事件数。 |
-| local_allow_tool_kinds | string[] | ["file_read"] | Core 故障时允许缓存放行的只读工具类别。 |
-| high_risk_tool_kinds | string[] | 见类型默认值 | Core 故障时必须 fail-closed 的工具类别。 |
+| 字段                    | 类型                            | 默认值                      | 用途                                     |
+| ----------------------- | ------------------------------- | --------------------------- | ---------------------------------------- |
+| plugin_id               | string                          | traceshield-security-plugin | 插件 ID。                                |
+| gateway_id              | string                          | 无                          | 网关或宿主实例 ID。                      |
+| core_base_url           | string                          | http://127.0.0.1:8787       | Core / Mock Core 地址。                  |
+| audit_timeout_ms        | number                          | 400                         | 同步审计超时时间。                       |
+| event_flush_timeout_ms  | number                          | 1000                        | 异步事件上报超时时间。                   |
+| event_flush_interval_ms | number                          | 2000                        | 异步事件批量上报间隔。                   |
+| mode                    | development / demo / production | development                 | 插件运行模式。                           |
+| fallback_enabled        | boolean                         | true                        | Core 不可用时是否启用本地策略。          |
+| debug_full_payload      | boolean                         | false                       | 是否允许上传完整载荷，默认关闭。         |
+| disk_queue_dir          | string                          | .traceshield/events         | 磁盘队列目录。                           |
+| memory_queue_max_events | number                          | 1000                        | 内存队列最大事件数。                     |
+| local_allow_tool_kinds  | string[]                        | ["file_read"]               | Core 故障时允许缓存放行的只读工具类别。  |
+| high_risk_tool_kinds    | string[]                        | 见类型默认值                | Core 故障时必须 fail-closed 的工具类别。 |
 
 ## Core 不可用时的降级策略
 

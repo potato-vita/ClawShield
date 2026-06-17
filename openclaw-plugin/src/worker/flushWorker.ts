@@ -66,16 +66,40 @@ export class FlushWorker {
         count: events.length,
       });
     } catch (error) {
-      const queuedEvents = this.options.memoryQueue.drain().map((item) => item.value);
-      const eventsToPersist = [...memoryEvents, ...queuedEvents];
-      if (eventsToPersist.length > 0) {
-        await this.options.diskQueue.enqueueMany(eventsToPersist);
-      }
+      const queuedItems = this.options.memoryQueue.drain();
+      const allEvents = [...memoryEvents, ...queuedItems.map((item) => item.value)];
 
-      this.options.logger.warn("TraceShield event flush failed; events persisted locally", {
-        reason: error instanceof Error ? error.message : String(error),
-        persisted: eventsToPersist.length,
-      });
+      if (allEvents.length > 0) {
+        try {
+          await this.options.diskQueue.enqueueMany(allEvents);
+          this.options.logger.warn("TraceShield event flush failed; events persisted to disk", {
+            reason: error instanceof Error ? error.message : String(error),
+            persisted: allEvents.length,
+          });
+        } catch (diskError) {
+          // 磁盘写入也失败时，将事件放回内存队列避免丢失
+          this.options.memoryQueue.requeue(
+            allEvents.map((value) => ({
+              id: value.event_id,
+              value,
+              attempts: 0,
+              enqueued_at: Date.now(),
+            })),
+          );
+          this.options.logger.error(
+            "TraceShield event flush and disk persist both failed; events requeued",
+            {
+              flushError: error instanceof Error ? error.message : String(error),
+              diskError: diskError instanceof Error ? diskError.message : String(diskError),
+              requeued: allEvents.length,
+            },
+          );
+        }
+      } else {
+        this.options.logger.warn("TraceShield event flush failed", {
+          reason: error instanceof Error ? error.message : String(error),
+        });
+      }
     } finally {
       this.running = false;
     }

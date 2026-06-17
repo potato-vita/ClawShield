@@ -12,7 +12,9 @@ export class LocalPolicyCache {
   }
 
   private key(request: Pick<AuditRequest, "tool_kind" | "resource_hint">): string {
-    return `${request.tool_kind}:${request.resource_hint ?? "*"}`;
+    // 没有 resource_hint 时使用空字符串而非通配符，避免不同资源共用同一 key
+    const hint = request.resource_hint ?? "";
+    return `${request.tool_kind}:${hint}`;
   }
 }
 

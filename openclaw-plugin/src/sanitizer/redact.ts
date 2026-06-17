@@ -1,16 +1,23 @@
 import { sha256 } from "./hash.js";
 import { previewText } from "./preview.js";
 
-const sensitiveKeyPattern = /(?:token|api[_-]?key|password|passwd|secret|cookie|authorization|private[_-]?key)/i;
-const apiKeyPattern = /\b(?:sk-[A-Za-z0-9_-]{16,}|[A-Za-z0-9_-]{24,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{20,})\b/g;
-const privateKeyPattern = /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g;
-const assignmentSecretPattern = /\b(token|api[_-]?key|password|passwd|secret|cookie)\s*=\s*([^\s]+)/gi;
+const sensitiveKeyPattern =
+  /(?:token|api[_-]?key|password|passwd|secret|cookie|authorization|private[_-]?key)/i;
+const apiKeyPattern =
+  /\b(?:sk-[A-Za-z0-9_-]{16,}|[A-Za-z0-9_-]{24,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{20,})\b/g;
+const privateKeyPattern =
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g;
+const assignmentSecretPattern =
+  /\b(token|api[_-]?key|password|passwd|secret|cookie)\s*=\s*([^\s]+)/gi;
 
-export function redactText(value: string): string {
-  return previewText(value)
+export function redactText(value: unknown): string {
+  const text = typeof value === "string" ? value : value != null ? JSON.stringify(value) : "";
+  // 先脱敏，再截断 —— 确保长内容中的敏感信息也能被清洗
+  const redacted = text
     .replace(privateKeyPattern, "[REDACTED_PRIVATE_KEY]")
     .replace(apiKeyPattern, (match) => `[REDACTED_HASH:${sha256(match).slice(0, 16)}]`)
     .replace(assignmentSecretPattern, "$1=[REDACTED]");
+  return previewText(redacted);
 }
 
 export function redactObject<T>(value: T): T {

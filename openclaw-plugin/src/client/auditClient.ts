@@ -19,17 +19,14 @@ export class AuditClient {
     const timeout = setTimeout(() => controller.abort(), this.options.timeoutMs);
 
     try {
-      const response = await this.fetchImpl(
-        new URL("/v1/audit/tool-call", this.options.baseUrl),
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-          },
-          body: JSON.stringify(request),
-          signal: controller.signal,
+      const response = await this.fetchImpl(new URL("/v1/audit/tool-call", this.options.baseUrl), {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
         },
-      );
+        body: JSON.stringify(request),
+        signal: controller.signal,
+      });
 
       if (!response.ok) {
         throw new Error(`Core audit failed with HTTP ${response.status}`);

@@ -20,10 +20,7 @@ const riskHints = [
 
 export type RiskHint = (typeof riskHints)[number];
 
-export function normalizeToolCall(
-  input: RawToolCallHookInput,
-  config: PluginConfig,
-): TraceEvent {
+export function normalizeToolCall(input: RawToolCallHookInput, config: PluginConfig): TraceEvent {
   const context = normalizeContext(input);
   const toolName = input.tool_name ?? "unknown";
   const toolKind = input.tool_kind ?? inferToolKind(toolName);
@@ -52,9 +49,7 @@ export function normalizeToolCall(
   };
 }
 
-export function buildAuditRequest(
-  input: RawToolCallHookInput,
-): AuditRequest {
+export function buildAuditRequest(input: RawToolCallHookInput): AuditRequest {
   const context = normalizeContext(input);
   const toolName = input.tool_name ?? "unknown";
   const toolKind = input.tool_kind ?? inferToolKind(toolName);
@@ -153,10 +148,7 @@ export function inferToolKind(toolName: string): string {
   return "unknown";
 }
 
-export function inferRiskHint(
-  toolKind: string,
-  params: Record<string, unknown>,
-): RiskHint {
+export function inferRiskHint(toolKind: string, params: Record<string, unknown>): RiskHint {
   if (riskHints.includes(toolKind as RiskHint)) {
     return toolKind as RiskHint;
   }

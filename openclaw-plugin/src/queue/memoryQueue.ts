@@ -9,7 +9,10 @@ export class MemoryQueue<T extends { event_id: string }> {
   private readonly items: QueueItem<T>[] = [];
   private readonly seen = new Set<string>();
 
-  constructor(private readonly maxEvents = 1000) {}
+  constructor(
+    private readonly maxEvents = 1000,
+    private readonly maxAttempts = 10,
+  ) {}
 
   enqueue(value: T): boolean {
     if (this.seen.has(value.event_id)) {
@@ -46,6 +49,10 @@ export class MemoryQueue<T extends { event_id: string }> {
   requeue(items: QueueItem<T>[]): void {
     for (const item of items) {
       item.attempts += 1;
+      // 超过最大重试次数则丢弃，避免"有毒"事件无限循环
+      if (item.attempts > this.maxAttempts) {
+        continue;
+      }
       if (!this.seen.has(item.id)) {
         this.items.push(item);
         this.seen.add(item.id);

@@ -4,7 +4,7 @@ import type { RawToolResultHookInput } from "../types/hook.js";
 import { createId } from "../utils/id.js";
 import { normalizeContext } from "./context.js";
 import { shortHash } from "../sanitizer/hash.js";
-import { previewText, summarizeValue } from "../sanitizer/preview.js";
+import { summarizeValue } from "../sanitizer/preview.js";
 import { redactObject, redactText } from "../sanitizer/redact.js";
 import { inferRiskHint, inferToolKind, summarizeParams } from "./normalizeToolCall.js";
 
@@ -16,9 +16,7 @@ export function normalizeToolResult(
   const toolName = input.tool_name ?? "unknown";
   const toolKind = input.tool_kind ?? inferToolKind(toolName);
   const params = input.params ?? {};
-  const resultPreview = config.debug_full_payload
-    ? input.result
-    : redactText(previewText(input.result));
+  const resultPreview = config.debug_full_payload ? input.result : redactText(input.result);
 
   return {
     event_id: createId("evt"),
