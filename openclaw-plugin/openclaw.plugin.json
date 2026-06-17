@@ -1,0 +1,98 @@
+{
+  "id": "traceshield-security-plugin",
+  "name": "TraceShield Security Plugin",
+  "version": "0.1.0",
+  "description": "Runtime security gate for OpenClaw tool calls and trace events.",
+  "contracts": {
+    "tools": [
+      "traceshield_status"
+    ],
+    "agentToolResultMiddleware": [
+      "openclaw"
+    ]
+  },
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "core_base_url": {
+        "type": "string",
+        "description": "TraceShield Core or Mock Core base URL."
+      },
+      "audit_timeout_ms": {
+        "type": "number",
+        "description": "Synchronous audit timeout in milliseconds."
+      },
+      "event_flush_timeout_ms": {
+        "type": "number",
+        "description": "Async event flush timeout in milliseconds."
+      },
+      "event_flush_interval_ms": {
+        "type": "number",
+        "description": "Async event flush interval in milliseconds."
+      },
+      "mode": {
+        "type": "string",
+        "enum": [
+          "development",
+          "demo",
+          "production"
+        ],
+        "description": "Plugin runtime mode."
+      },
+      "fallback_enabled": {
+        "type": "boolean",
+        "description": "Enable conservative local fallback when Core is unavailable."
+      },
+      "debug_full_payload": {
+        "type": "boolean",
+        "description": "Allow full payload upload for local debugging only."
+      },
+      "disk_queue_dir": {
+        "type": "string",
+        "description": "Disk queue directory for async event retry."
+      }
+    }
+  },
+  "uiHints": {
+    "core_base_url": {
+      "label": "Core URL",
+      "placeholder": "http://127.0.0.1:8787"
+    },
+    "audit_timeout_ms": {
+      "label": "Audit timeout"
+    },
+    "fallback_enabled": {
+      "label": "Fallback policy"
+    },
+    "debug_full_payload": {
+      "label": "Debug full payload",
+      "sensitive": true
+    }
+  },
+  "configuration": {
+    "coreBaseUrl": {
+      "type": "string",
+      "default": "http://127.0.0.1:8787",
+      "description": "TraceShield Core or Mock Core base URL."
+    },
+    "auditTimeoutMs": {
+      "type": "number",
+      "default": 400,
+      "description": "Synchronous audit timeout in milliseconds."
+    },
+    "mode": {
+      "type": "string",
+      "default": "development",
+      "enum": [
+        "development",
+        "demo",
+        "production"
+      ],
+      "description": "Plugin runtime mode."
+    }
+  }
+}

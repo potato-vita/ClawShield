@@ -1,0 +1,17 @@
+{
+  "name": "@traceshield/mock-core",
+  "version": "0.1.0",
+  "description": "Mock TraceShield Core for OpenClaw plugin demos.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx server.ts",
+    "start": "tsx server.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}
