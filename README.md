@@ -18,6 +18,8 @@ TraceShield OpenClaw 插件是一个运行时安全门，用来在 OpenClaw 执�
 traceshield/
 ├─ openclaw-plugin/   # TraceShield OpenClaw 插件本体
 ├─ mock-core/         # 模拟 Core 的本地调试服务
+├─ core/              # FastAPI Core、SQLite 和审计 API
+├─ eino/              # CloudWeGo Eino 源码与 TraceShield Go 前端应用
 ├─ doc/               # 开发日志与阶段性记录
 └─ README.md
 ```
@@ -179,6 +181,27 @@ TRACESHIELD_HIGH_RISK_TOOL_KINDS=shell_exec,file_write,file_delete,network_reque
 - 每次降级都会生成 `fallback_decision` 事件
 
 ## 开发与验证
+
+### 启动完整系统
+
+终端 1：
+
+```bash
+cd core
+source .venv/bin/activate
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+终端 2：
+
+```bash
+cd eino
+go run ./examples/traceshield
+```
+
+正式前端入口：`http://127.0.0.1:8080/`。
+
+`8000` 是 Core API；Eino 前端通过 `/core/*` 代理访问它。
 
 在 `openclaw-plugin/` 下可运行：
 

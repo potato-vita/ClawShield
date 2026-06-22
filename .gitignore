@@ -2,3 +2,19 @@ node_modules/
 dist/
 .traceshield/
 *.log
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+core/app/data/*.db
+core/app/data/uploads/**
+!core/app/data/uploads/.gitkeep
+core/app/data/exports/**
+!core/app/data/exports/.gitkeep
+core/app/data/queue/**
+!core/app/data/queue/.gitkeep
+
+# 本地凭证 / 测试密钥（勿提交；api.md 含火山方舟测试 Key）
+api.md

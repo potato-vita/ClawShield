@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TraceShield Eino 工作台</title>
+    <style>
+      :root { --bg:#f4f6f8; --panel:#fff; --ink:#17202a; --muted:#637282; --line:#d9e0e6; --blue:#165f96; --green:#18794e; --red:#b42318; --amber:#9a5b00; }
+      * { box-sizing:border-box; }
+      body { margin:0; min-width:320px; font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg); letter-spacing:0; }
+      button,textarea { font:inherit; letter-spacing:0; }
+      button { min-height:34px; padding:6px 10px; border:1px solid var(--line); border-radius:5px; background:#fff; cursor:pointer; }
+      button:hover { border-color:#8da1b5; } button.primary { color:#fff; background:var(--blue); border-color:var(--blue); }
+      header { height:58px; padding:0 18px; display:flex; align-items:center; justify-content:space-between; background:#fff; border-bottom:1px solid var(--line); }
+      h1 { margin:0; font-size:18px; } .status { display:flex; gap:8px; align-items:center; color:var(--muted); }
+      .dot { width:9px; height:9px; border-radius:50%; background:#8b98a4; } .dot.ok { background:var(--green); }
+      .metrics { display:grid; grid-template-columns:repeat(4,1fr); background:#fff; border-bottom:1px solid var(--line); }
+      .metric { padding:12px 18px; border-right:1px solid var(--line); } .metric:last-child { border-right:0; }
+      .metric span { display:block; color:var(--muted); font-size:12px; } .metric strong { font-size:22px; }
+      main { height:calc(100vh - 127px); min-height:540px; display:grid; grid-template-columns:250px minmax(380px,1fr) 360px; background:#fff; }
+      section { min-width:0; display:flex; flex-direction:column; border-right:1px solid var(--line); } section:last-child { border-right:0; }
+      .head { min-height:49px; padding:7px 11px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); }
+      h2 { margin:0; font-size:14px; } .scroll { flex:1; overflow:auto; }
+      ul { list-style:none; margin:0; padding:0; } li { padding:10px 12px; border-bottom:1px solid #edf0f3; cursor:pointer; }
+      li:hover,li.active { background:#eef5fa; } .title { font-weight:600; overflow-wrap:anywhere; } .meta { color:var(--muted); font-size:12px; }
+      .risk { font-size:11px; font-weight:700; text-transform:uppercase; } .critical { color:var(--red); } .high { color:var(--amber); }
+      #chat { padding:16px; display:flex; flex-direction:column; gap:10px; }
+      .msg { max-width:88%; padding:10px 12px; border:1px solid var(--line); border-radius:6px; white-space:pre-wrap; overflow-wrap:anywhere; }
+      .msg.user { align-self:flex-end; background:#edf5fb; border-color:#bdd3e4; } .msg.assistant { align-self:flex-start; }
+      .event-id { color:var(--blue); text-decoration:underline; cursor:pointer; }
+      .composer { padding:10px; display:grid; grid-template-columns:1fr auto; gap:8px; border-top:1px solid var(--line); }
+      textarea { width:100%; min-height:50px; max-height:120px; resize:none; padding:8px; border:1px solid var(--line); border-radius:5px; }
+      #detail { padding:14px; } #detail h3 { margin:15px 0 6px; font-size:14px; } #detail h3:first-child { margin-top:0; }
+      dl { display:grid; grid-template-columns:100px 1fr; gap:5px 8px; } dt { color:var(--muted); } dd { margin:0; overflow-wrap:anywhere; }
+      .empty { padding:24px 12px; color:var(--muted); text-align:center; }
+      @media(max-width:940px){ main{height:auto;grid-template-columns:1fr} section{min-height:420px;border-right:0;border-bottom:1px solid var(--line)} .metrics{grid-template-columns:1fr 1fr} }
+    </style>
+  </head>
+  <body>
+    <header><h1>TraceShield · Eino 安全分析</h1><div class="status"><span id="dot" class="dot"></span><span id="health">连接中</span></div></header>
+    <div class="metrics"><div class="metric"><span>总告警</span><strong id="total">0</strong></div><div class="metric"><span>Critical</span><strong id="critical">0</strong></div><div class="metric"><span>高危</span><strong id="high">0</strong></div><div class="metric"><span>分析查询</span><strong id="queries">0</strong></div></div>
+    <main>
+      <section><div class="head"><h2>数据库会话</h2><button id="new" class="primary">新建</button></div><div class="scroll"><ul id="sessions"></ul></div></section>
+      <section><div class="head"><h2>Eino 分析</h2><button id="summary">刷新分析</button></div><div id="chat" class="scroll"><div class="empty">新建或选择会话后开始分析</div></div><div class="composer"><textarea id="input" placeholder="询问高危事件或输入 event ID"></textarea><button id="send" class="primary">发送</button></div></section>
+      <section><div class="head"><h2>安全事件与洞察</h2><button id="refresh">刷新</button></div><div class="scroll"><ul id="events"></ul><div id="detail"></div></div></section>
+    </main>
+    <script>
+      const state={session:"",sessions:[],events:[]};const $=id=>document.getElementById(id);const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+      async function api(path,opt){const r=await fetch(path,opt);if(!r.ok)throw new Error(await r.text());return r.json()}
+      async function health(){try{const d=await api('/api/health');$('dot').classList.toggle('ok',d.success);$('health').textContent='Eino + Core OK'}catch{$('health').textContent='服务不可用'}}
+      async function dashboard(){const d=await api('/core/api/module4/dashboard?time_range=7d'),s=d.data.summary;$('total').textContent=s.total_alerts;$('critical').textContent=s.critical_count;$('high').textContent=s.high_risk_count;$('queries').textContent=s.query_count;state.events=d.data.high_risk_events;$('events').innerHTML=state.events.map(e=>`<li data-event="${esc(e.event_id)}"><span class="risk ${esc(e.risk_level)}">${esc(e.risk_level)}</span><div class="title">${esc(e.event_title)}</div><div class="meta">${esc(e.event_id)}</div></li>`).join('')||'<li class="empty">暂无事件</li>';document.querySelectorAll('[data-event]').forEach(x=>x.onclick=()=>detail(x.dataset.event))}
+      async function sessions(){state.sessions=await api('/core/sessions');$('sessions').innerHTML=state.sessions.map(s=>`<li data-session="${esc(s.id)}" class="${s.id===state.session?'active':''}"><div class="title">${esc(s.title)}</div><div class="meta">${esc(s.updated_at)}</div></li>`).join('')||'<li class="empty">暂无会话</li>';document.querySelectorAll('[data-session]').forEach(x=>x.onclick=()=>selectSession(x.dataset.session))}
+      async function createSession(){const d=await api('/core/sessions',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({title:'Eino 分析会话'})});state.session=d.id;$('chat').innerHTML='';await sessions()}
+      async function selectSession(id){state.session=id;await sessions();const r=await fetch('/core/sessions/'+encodeURIComponent(id)+'/render'),text=await r.text();const blocks=text.split('\n\n').filter(x=>x.startsWith('data:'));let last={};for(const b of blocks){try{last=JSON.parse(b.slice(5))}catch{}}$('chat').innerHTML='';if(last.text)message('assistant',last.text)}
+      function linked(text){return esc(text).replace(/event_[A-Za-z0-9]+/g,id=>`<span class="event-id" data-link="${id}">${id}</span>`)}
+      function message(role,text){const d=document.createElement('div');d.className='msg '+role;d.innerHTML=linked(text);$('chat').appendChild(d);d.querySelectorAll('[data-link]').forEach(x=>x.onclick=()=>detail(x.dataset.link));$('chat').scrollTop=$('chat').scrollHeight}
+      async function analyze(text,eventID=''){if(!state.session)await createSession();message('user',text);const d=await api('/api/analysis',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({session_id:state.session,message:text,event_id:eventID})});message('assistant',d.answer);await Promise.all([sessions(),dashboard()])}
+      async function detail(id){const d=await api('/core/api/module4/events/'+encodeURIComponent(id)),e=d.event;$('detail').innerHTML=`<h3>${esc(e.event_title)}</h3><dl><dt>事件 ID</dt><dd>${esc(e.event_id)}</dd><dt>风险</dt><dd>${esc(e.risk_level)} / ${esc(e.risk_score)}</dd><dt>目标</dt><dd>${esc(e.target)} (${esc(e.target_type)})</dd><dt>用户</dt><dd>${esc(e.username||'unknown')}</dd><dt>部门</dt><dd>${esc(e.department_name||'未分配')}</dd></dl><h3>风险解释</h3><div>${esc(d.risk_explanation)}</div><h3>处置建议</h3><ul>${d.recommended_actions.map(x=>'<li>'+esc(x)+'</li>').join('')}</ul>`}
+      $('new').onclick=createSession;$('send').onclick=()=>{const v=$('input').value.trim();if(v){$('input').value='';analyze(v)}};$('input').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('send').click()}};$('summary').onclick=()=>analyze('分析最近 7 天高风险事件');$('refresh').onclick=dashboard;Promise.all([health(),dashboard(),sessions()]).catch(console.error)
+    </script>
+  </body>
+</html>

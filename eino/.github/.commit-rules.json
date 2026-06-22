@@ -1,0 +1,41 @@
+{
+  "allowedTypes": [
+    "feat",
+    "fix",
+    "docs",
+    "style",
+    "refactor",
+    "perf",
+    "test",
+    "build",
+    "ci",
+    "chore",
+    "revert"
+  ],
+  "allowedScopes": [
+    "adk",
+    "adk/filesystem",
+    "callbacks",
+    "components",
+    "compose",
+    "deep",
+    "dynamictool",
+    "filesystem",
+    "flow",
+    "internal",
+    "middlewares",
+    "planexecute",
+    "plantask",
+    "prebuilt",
+    "reduction",
+    "schema",
+    "skill",
+    "summarization",
+    "supervisor",
+    "toolsearch",
+    "utils",
+    "docs",
+    "ci",
+    "serialization"
+  ]
+}

@@ -1,0 +1,672 @@
+/*
+ * Copyright 2025 CloudWeGo Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package adk
+
+import (
+	"bytes"
+	"context"
+	"encoding/gob"
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"math/rand"
+	"testing"
+
+	"github.com/bytedance/sonic"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
+	"github.com/cloudwego/eino/components/model"
+	"github.com/cloudwego/eino/components/tool"
+	"github.com/cloudwego/eino/compose"
+	mockModel "github.com/cloudwego/eino/internal/mock/components/model"
+	"github.com/cloudwego/eino/schema"
+)
+
+type testModelWrapper struct {
+	inner model.ToolCallingChatModel
+}
+
+func TestStateCompatConversions_V080(t *testing.T) {
+	t.Run("stateV080GobDecodeAndToState", func(t *testing.T) {
+		ss := &stateV080Serialization{
+			ReturnDirectlyToolCallID: "tcid",
+			RemainingIterations:      2,
+			Internals: map[string]any{
+				"_retryAttempt":        9,
+				"_returnDirectlyEvent": &AgentEvent{AgentName: "agent"},
+			},
+		}
+
+		var buf bytes.Buffer
+		assert.NoError(t, gob.NewEncoder(&buf).Encode(ss))
+
+		var legacy stateV080
+		assert.NoError(t, legacy.GobDecode(buf.Bytes()))
+
+		s := stateV080ToState(&legacy)
+		assert.Equal(t, "tcid", s.ReturnDirectlyToolCallID)
+		assert.True(t, s.HasReturnDirectly)
+		assert.Equal(t, 2, s.RemainingIterations)
+		assert.Equal(t, 9, s.RetryAttempt)
+		assert.NotNil(t, s.ReturnDirectlyEvent)
+		assert.Equal(t, "agent", s.ReturnDirectlyEvent.AgentName)
+	})
+}
+
+func TestStateGetToolGenActions(t *testing.T) {
+	st := &State{
+		ToolGenActions: map[string]*AgentAction{
+			"k": {},
+		},
+	}
+	assert.NotNil(t, st.getToolGenActions())
+	assert.Contains(t, st.getToolGenActions(), "k")
+}
+
+func (w *testModelWrapper) Generate(ctx context.Context, input []*schema.Message, opts ...model.Option) (*schema.Message, error) {
+	return (&stateModelWrapper{inner: w.inner, original: w.inner}).Generate(ctx, input, opts...)
+}
+
+func (w *testModelWrapper) Stream(ctx context.Context, input []*schema.Message, opts ...model.Option) (*schema.StreamReader[*schema.Message], error) {
+	return (&stateModelWrapper{inner: w.inner, original: w.inner}).Stream(ctx, input, opts...)
+}
+
+func (w *testModelWrapper) WithTools(tools []*schema.ToolInfo) (model.ToolCallingChatModel, error) {
+	newInner, err := w.inner.WithTools(tools)
+	if err != nil {
+		return nil, err
+	}
+	return &testModelWrapper{inner: newInner}, nil
+}
+
+// TestReact tests the newReact function with different scenarios
+func TestReact(t *testing.T) {
+	// Basic test for newReact function
+	t.Run("Invoke", func(t *testing.T) {
+		ctx := context.Background()
+
+		// Create a fake tool for testing
+		fakeTool := &fakeToolForTest{
+			tarCount: 3,
+		}
+
+		info, err := fakeTool.Info(ctx)
+		assert.NoError(t, err)
+
+		// Create a mock chat model
+		ctrl := gomock.NewController(t)
+		cm := mockModel.NewMockToolCallingChatModel(ctrl)
+
+		// Set up expectations for the mock model
+		times := 0
+		cm.EXPECT().Generate(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, input []Message, opts ...model.Option) (Message, error) {
+				times++
+				if times <= 2 {
+					return schema.AssistantMessage("hello test",
+							[]schema.ToolCall{
+								{
+									ID: randStrForTest(),
+									Function: schema.FunctionCall{
+										Name:      info.Name,
+										Arguments: fmt.Sprintf(`{"name": "%s", "hh": "123"}`, randStrForTest()),
+									},
+								},
+							}),
+						nil
+				}
+
+				return schema.AssistantMessage("bye", nil), nil
+			}).AnyTimes()
+		cm.EXPECT().WithTools(gomock.Any()).Return(cm, nil).AnyTimes()
+
+		// Create a reactConfig
+		config := &reactConfig{
+			model: &testModelWrapper{inner: cm},
+			toolsConfig: &compose.ToolsNodeConfig{
+				Tools: []tool.BaseTool{fakeTool},
+			},
+			toolsReturnDirectly: map[string]bool{},
+		}
+
+		graph, err := newReact(ctx, config)
+		assert.NoError(t, err)
+		assert.NotNil(t, graph)
+
+		compiled, err := graph.Compile(ctx, compose.WithMaxRunSteps(math.MaxInt))
+		assert.NoError(t, err)
+		assert.NotNil(t, compiled)
+
+		// Test with a user message
+		result, err := compiled.Invoke(ctx, &reactInput{Messages: []Message{
+			{
+				Role:    schema.User,
+				Content: "Use the test tool to say hello",
+			},
+		}})
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+	})
+
+	// Test with toolsReturnDirectly
+	t.Run("ToolsReturnDirectly", func(t *testing.T) {
+		ctx := context.Background()
+
+		// Create a fake tool for testing
+		fakeTool := &fakeToolForTest{
+			tarCount: 3,
+		}
+
+		info, err := fakeTool.Info(ctx)
+		assert.NoError(t, err)
+
+		// Create a mock chat model
+		ctrl := gomock.NewController(t)
+		cm := mockModel.NewMockToolCallingChatModel(ctrl)
+
+		// Set up expectations for the mock model
+		times := 0
+		cm.EXPECT().Generate(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, input []Message, opts ...model.Option) (Message, error) {
+				times++
+				if times <= 2 {
+					return schema.AssistantMessage("hello test",
+							[]schema.ToolCall{
+								{
+									ID: randStrForTest(),
+									Function: schema.FunctionCall{
+										Name:      info.Name,
+										Arguments: fmt.Sprintf(`{"name": "%s", "hh": "123"}`, randStrForTest()),
+									},
+								},
+							}),
+						nil
+				}
+
+				return schema.AssistantMessage("bye", nil), nil
+			}).AnyTimes()
+		cm.EXPECT().WithTools(gomock.Any()).Return(cm, nil).AnyTimes()
+
+		// Create a reactConfig with toolsReturnDirectly
+		config := &reactConfig{
+			model: &testModelWrapper{inner: cm},
+			toolsConfig: &compose.ToolsNodeConfig{
+				Tools: []tool.BaseTool{fakeTool},
+			},
+			toolsReturnDirectly: map[string]bool{info.Name: true},
+		}
+
+		graph, err := newReact(ctx, config)
+		assert.NoError(t, err)
+		assert.NotNil(t, graph)
+
+		compiled, err := graph.Compile(ctx, compose.WithMaxRunSteps(math.MaxInt))
+		assert.NoError(t, err)
+		assert.NotNil(t, compiled)
+
+		// Test with a user message when tool returns directly
+		result, err := compiled.Invoke(ctx, &reactInput{Messages: []Message{
+			{
+				Role:    schema.User,
+				Content: "Use the test tool to say hello",
+			},
+		}})
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+
+		assert.Equal(t, result.Role, schema.Tool)
+	})
+
+	// Test streaming functionality
+	t.Run("Stream", func(t *testing.T) {
+		ctx := context.Background()
+
+		// Create a fake tool for testing
+		fakeTool := &fakeToolForTest{
+			tarCount: 3,
+		}
+
+		fakeStreamTool := &fakeStreamToolForTest{
+			tarCount: 3,
+		}
+
+		// Create a mock chat model
+		ctrl := gomock.NewController(t)
+		cm := mockModel.NewMockToolCallingChatModel(ctrl)
+
+		// Set up expectations for the mock model
+		times := 0
+		cm.EXPECT().Stream(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, input []Message, opts ...model.Option) (
+				MessageStream, error) {
+				sr, sw := schema.Pipe[Message](1)
+				defer sw.Close()
+
+				info, _ := fakeTool.Info(ctx)
+				streamInfo, _ := fakeStreamTool.Info(ctx)
+
+				times++
+				if times <= 1 {
+					sw.Send(schema.AssistantMessage("hello test",
+						[]schema.ToolCall{
+							{
+								ID: randStrForTest(),
+								Function: schema.FunctionCall{
+									Name:      info.Name,
+									Arguments: fmt.Sprintf(`{"name": "%s", "hh": "tool"}`, randStrForTest()),
+								},
+							},
+						}),
+						nil)
+					return sr, nil
+				} else if times == 2 {
+					sw.Send(schema.AssistantMessage("hello stream",
+						[]schema.ToolCall{
+							{
+								ID: randStrForTest(),
+								Function: schema.FunctionCall{
+									Name:      streamInfo.Name,
+									Arguments: fmt.Sprintf(`{"name": "%s", "hh": "stream tool"}`, randStrForTest()),
+								},
+							},
+						}),
+						nil)
+					return sr, nil
+				}
+
+				sw.Send(schema.AssistantMessage("bye", nil), nil)
+				return sr, nil
+			}).AnyTimes()
+		cm.EXPECT().WithTools(gomock.Any()).Return(cm, nil).AnyTimes()
+
+		// Create a reactConfig
+		config := &reactConfig{
+			model: &testModelWrapper{inner: cm},
+			toolsConfig: &compose.ToolsNodeConfig{
+				Tools: []tool.BaseTool{fakeTool, fakeStreamTool},
+			},
+			toolsReturnDirectly: map[string]bool{},
+		}
+
+		graph, err := newReact(ctx, config)
+		assert.NoError(t, err)
+		assert.NotNil(t, graph)
+
+		compiled, err := graph.Compile(ctx, compose.WithMaxRunSteps(math.MaxInt))
+		assert.NoError(t, err)
+		assert.NotNil(t, compiled)
+
+		// Test streaming with a user message
+		outStream, err := compiled.Stream(ctx, &reactInput{Messages: []Message{
+			{
+				Role:    schema.User,
+				Content: "Use the test tool to say hello",
+			},
+		}})
+		assert.NoError(t, err)
+		assert.NotNil(t, outStream)
+
+		defer outStream.Close()
+
+		msgs := make([]Message, 0)
+		for {
+			msg, err_ := outStream.Recv()
+			if err_ != nil {
+				if errors.Is(err_, io.EOF) {
+					break
+				}
+				t.Fatal(err_)
+			}
+
+			msgs = append(msgs, msg)
+		}
+
+		assert.NotEmpty(t, msgs)
+	})
+
+	// Test streaming with toolsReturnDirectly
+	t.Run("StreamWithToolsReturnDirectly", func(t *testing.T) {
+		ctx := context.Background()
+
+		// Create a fake tool for testing
+		fakeTool := &fakeToolForTest{
+			tarCount: 3,
+		}
+
+		fakeStreamTool := &fakeStreamToolForTest{
+			tarCount: 3,
+		}
+
+		// Create a mock chat model
+		ctrl := gomock.NewController(t)
+		cm := mockModel.NewMockToolCallingChatModel(ctrl)
+
+		// Set up expectations for the mock model
+		times := 0
+		cm.EXPECT().Stream(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, input []Message, opts ...model.Option) (
+				MessageStream, error) {
+				sr, sw := schema.Pipe[Message](1)
+				defer sw.Close()
+
+				info, _ := fakeTool.Info(ctx)
+				streamInfo, _ := fakeStreamTool.Info(ctx)
+
+				times++
+				if times <= 1 {
+					sw.Send(schema.AssistantMessage("hello test",
+						[]schema.ToolCall{
+							{
+								ID: randStrForTest(),
+								Function: schema.FunctionCall{
+									Name:      info.Name,
+									Arguments: fmt.Sprintf(`{"name": "%s", "hh": "tool"}`, randStrForTest()),
+								},
+							},
+						}),
+						nil)
+					return sr, nil
+				} else if times == 2 {
+					sw.Send(schema.AssistantMessage("hello stream",
+						[]schema.ToolCall{
+							{
+								ID: randStrForTest(),
+								Function: schema.FunctionCall{
+									Name:      streamInfo.Name,
+									Arguments: fmt.Sprintf(`{"name": "%s", "hh": "stream tool"}`, randStrForTest()),
+								},
+							},
+						}),
+						nil)
+					return sr, nil
+				}
+
+				sw.Send(schema.AssistantMessage("bye", nil), nil)
+				return sr, nil
+			}).AnyTimes()
+		cm.EXPECT().WithTools(gomock.Any()).Return(cm, nil).AnyTimes()
+
+		streamInfo, err := fakeStreamTool.Info(ctx)
+		assert.NoError(t, err)
+
+		// Create a reactConfig with toolsReturnDirectly
+		config := &reactConfig{
+			model: &testModelWrapper{inner: cm},
+			toolsConfig: &compose.ToolsNodeConfig{
+				Tools: []tool.BaseTool{fakeTool, fakeStreamTool},
+			},
+			toolsReturnDirectly: map[string]bool{streamInfo.Name: true},
+		}
+
+		graph, err := newReact(ctx, config)
+		assert.NoError(t, err)
+		assert.NotNil(t, graph)
+
+		compiled, err := graph.Compile(ctx, compose.WithMaxRunSteps(math.MaxInt))
+		assert.NoError(t, err)
+		assert.NotNil(t, compiled)
+
+		// Reset times counter
+		times = 0
+
+		// Test streaming with a user message when tool returns directly
+		outStream, err := compiled.Stream(ctx, &reactInput{Messages: []Message{
+			{
+				Role:    schema.User,
+				Content: "Use the test tool to say hello",
+			},
+		}})
+		assert.NoError(t, err)
+		assert.NotNil(t, outStream)
+
+		msgs := make([]Message, 0)
+		for {
+			msg, err_ := outStream.Recv()
+			if err_ != nil {
+				if errors.Is(err_, io.EOF) {
+					break
+				}
+				t.Fatal(err)
+			}
+
+			assert.Equal(t, msg.Role, schema.Tool)
+
+			msgs = append(msgs, msg)
+		}
+
+		outStream.Close()
+
+		assert.NotEmpty(t, msgs)
+	})
+
+	t.Run("MaxIterations", func(t *testing.T) {
+		ctx := context.Background()
+
+		// Create a fake tool for testing
+		fakeTool := &fakeToolForTest{
+			tarCount: 3,
+		}
+
+		info, err := fakeTool.Info(ctx)
+		assert.NoError(t, err)
+
+		// Create a mock chat model
+		ctrl := gomock.NewController(t)
+		cm := mockModel.NewMockToolCallingChatModel(ctrl)
+
+		// Set up expectations for the mock model
+		times := 0
+		cm.EXPECT().Generate(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, input []Message, opts ...model.Option) (Message, error) {
+				times++
+				if times <= 5 {
+					return schema.AssistantMessage("hello test",
+							[]schema.ToolCall{
+								{
+									ID: randStrForTest(),
+									Function: schema.FunctionCall{
+										Name:      info.Name,
+										Arguments: fmt.Sprintf(`{"name": "%s", "hh": "123"}`, randStrForTest()),
+									},
+								},
+							}),
+						nil
+				}
+
+				return schema.AssistantMessage("bye", nil), nil
+			}).AnyTimes()
+		cm.EXPECT().WithTools(gomock.Any()).Return(cm, nil).AnyTimes()
+
+		// don't exceed max iterations
+		config := &reactConfig{
+			model: &testModelWrapper{inner: cm},
+			toolsConfig: &compose.ToolsNodeConfig{
+				Tools: []tool.BaseTool{fakeTool},
+			},
+			toolsReturnDirectly: map[string]bool{},
+			maxIterations:       6,
+		}
+
+		graph, err := newReact(ctx, config)
+		assert.NoError(t, err)
+		assert.NotNil(t, graph)
+
+		compiled, err := graph.Compile(ctx, compose.WithMaxRunSteps(math.MaxInt))
+		assert.NoError(t, err)
+		assert.NotNil(t, compiled)
+
+		// Test with a user message
+		result, err := compiled.Invoke(ctx, &reactInput{Messages: []Message{
+			{
+				Role:    schema.User,
+				Content: "Use the test tool to say hello",
+			},
+		}})
+		assert.NoError(t, err)
+		assert.Equal(t, result.Content, "bye")
+
+		// reset chat model times counter
+		times = 0
+		// exceed max iterations
+		config = &reactConfig{
+			model: &testModelWrapper{inner: cm},
+			toolsConfig: &compose.ToolsNodeConfig{
+				Tools: []tool.BaseTool{fakeTool},
+			},
+			toolsReturnDirectly: map[string]bool{},
+			maxIterations:       5,
+		}
+
+		graph, err = newReact(ctx, config)
+		assert.NoError(t, err)
+		assert.NotNil(t, graph)
+
+		compiled, err = graph.Compile(ctx, compose.WithMaxRunSteps(math.MaxInt))
+		assert.NoError(t, err)
+		assert.NotNil(t, compiled)
+
+		// Test with a user message
+		_, err = compiled.Invoke(ctx, &reactInput{Messages: []Message{
+			{
+				Role:    schema.User,
+				Content: "Use the test tool to say hello",
+			},
+		}})
+		assert.Error(t, err)
+		t.Logf("actual error: %v", err.Error())
+		assert.ErrorIs(t, err, ErrExceedMaxIterations)
+
+		assert.Contains(t, err.Error(), ErrExceedMaxIterations.Error())
+	})
+}
+
+// Helper types and functions for testing
+
+type fakeStreamToolForTest struct {
+	tarCount int
+	curCount int
+}
+
+func (t *fakeStreamToolForTest) StreamableRun(_ context.Context, argumentsInJSON string, _ ...tool.Option) (
+	*schema.StreamReader[string], error) {
+	p := &fakeToolInputForTest{}
+	err := sonic.UnmarshalString(argumentsInJSON, p)
+	if err != nil {
+		return nil, err
+	}
+
+	if t.curCount >= t.tarCount {
+		s := schema.StreamReaderFromArray([]string{`{"say": "bye"}`})
+		return s, nil
+	}
+	t.curCount++
+	s := schema.StreamReaderFromArray([]string{fmt.Sprintf(`{"say": "hello %v"}`, p.Name)})
+	return s, nil
+}
+
+type fakeToolForTest struct {
+	tarCount int
+	curCount int
+}
+
+func (t *fakeToolForTest) Info(_ context.Context) (*schema.ToolInfo, error) {
+	return &schema.ToolInfo{
+		Name: "test_tool",
+		Desc: "test tool for unit testing",
+		ParamsOneOf: schema.NewParamsOneOfByParams(
+			map[string]*schema.ParameterInfo{
+				"name": {
+					Desc:     "user name for testing",
+					Required: true,
+					Type:     schema.String,
+				},
+			}),
+	}, nil
+}
+
+func (t *fakeStreamToolForTest) Info(_ context.Context) (*schema.ToolInfo, error) {
+	return &schema.ToolInfo{
+		Name: "test_stream_tool",
+		Desc: "test stream tool for unit testing",
+		ParamsOneOf: schema.NewParamsOneOfByParams(
+			map[string]*schema.ParameterInfo{
+				"name": {
+					Desc:     "user name for testing",
+					Required: true,
+					Type:     schema.String,
+				},
+			}),
+	}, nil
+}
+
+func (t *fakeToolForTest) InvokableRun(_ context.Context, argumentsInJSON string, _ ...tool.Option) (string, error) {
+	p := &fakeToolInputForTest{}
+	err := sonic.UnmarshalString(argumentsInJSON, p)
+	if err != nil {
+		return "", err
+	}
+
+	if t.curCount >= t.tarCount {
+		return `{"say": "bye"}`, nil
+	}
+
+	t.curCount++
+	return fmt.Sprintf(`{"say": "hello %v"}`, p.Name), nil
+}
+
+type fakeToolInputForTest struct {
+	Name string `json:"name"`
+}
+
+func randStrForTest() string {
+	seeds := []rune("test seed")
+	b := make([]rune, 8)
+	for i := range b {
+		b[i] = seeds[rand.Intn(len(seeds))]
+	}
+	return string(b)
+}
+
+func TestReactHistory_EmptyMessages(t *testing.T) {
+	g := compose.NewGraph[string, []Message](compose.WithGenLocalState(func(ctx context.Context) (state *State) {
+		return &State{
+			Messages: []Message{},
+		}
+	}))
+	require.NoError(t, g.AddLambdaNode("1", compose.InvokableLambda(func(ctx context.Context, input string) (output []Message, err error) {
+		return getReactChatHistory(ctx, "DestAgent")
+	})))
+	require.NoError(t, g.AddEdge(compose.START, "1"))
+	require.NoError(t, g.AddEdge("1", compose.END))
+
+	ctx := context.Background()
+	ctx, _ = initRunCtx(ctx, "MyAgent", nil)
+	runner, err := g.Compile(ctx)
+	require.NoError(t, err)
+
+	require.NotPanics(t, func() {
+		result, err := runner.Invoke(ctx, "")
+		if err != nil {
+			t.Logf("Got error (acceptable): %v", err)
+			return
+		}
+		t.Logf("Got %d messages", len(result))
+	}, "BUG: getReactChatHistory should not panic with empty Messages slice")
+}

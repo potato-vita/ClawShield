@@ -1,0 +1,15 @@
+{
+  "request_id": "audit_fixture_001",
+  "schema_version": "v1",
+  "session_id": "sess_fixture",
+  "run_id": "run_fixture",
+  "trace_id": "trace_fixture",
+  "tool_call_id": "tool_fixture",
+  "tool_name": "shell",
+  "tool_kind": "shell_exec",
+  "raw_params": {"cmd": "ls"},
+  "param_summary": {"cmd": {"type": "string", "length": 2, "preview": "ls"}},
+  "resource_hint": "ls",
+  "risk_hint": "shell_exec",
+  "context": {"user_goal": "List files"}
+}

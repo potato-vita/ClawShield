@@ -1,0 +1,235 @@
+/*
+ * Copyright 2024 CloudWeGo Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package schema
+
+import (
+	"bytes"
+	"encoding/gob"
+	"encoding/json"
+	"testing"
+
+	"github.com/eino-contrib/jsonschema"
+	"github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestParamsOneOfToJSONSchema(t *testing.T) {
+	convey.Convey("ParamsOneOfToJSONSchema", t, func() {
+		var (
+			oneOf     ParamsOneOf
+			converted any
+			err       error
+		)
+
+		convey.Convey("user provides JSON schema directly, use what the user provides", func() {
+			oneOf.jsonschema = &jsonschema.Schema{
+				Type:        "string",
+				Description: "this is the only argument",
+			}
+			converted, err = oneOf.ToJSONSchema()
+			convey.So(err, convey.ShouldBeNil)
+			convey.So(converted, convey.ShouldResemble, oneOf.jsonschema)
+		})
+
+		convey.Convey("user provides map[string]ParameterInfo, converts to json schema", func() {
+			oneOf.params = map[string]*ParameterInfo{
+				"arg1": {
+					Type:     String,
+					Desc:     "this is the first argument",
+					Required: true,
+					Enum:     []string{"1", "2"},
+				},
+				"arg2": {
+					Type: Object,
+					Desc: "this is the second argument",
+					SubParams: map[string]*ParameterInfo{
+						"sub_arg1": {
+							Type:     String,
+							Desc:     "this is the sub argument",
+							Required: true,
+							Enum:     []string{"1", "2"},
+						},
+						"sub_arg2": {
+							Type: String,
+							Desc: "this is the sub argument 2",
+						},
+					},
+					Required: true,
+				},
+				"arg3": {
+					Type: Array,
+					Desc: "this is the third argument",
+					ElemInfo: &ParameterInfo{
+						Type:     String,
+						Desc:     "this is the element of the third argument",
+						Required: true,
+						Enum:     []string{"1", "2"},
+					},
+					Required: true,
+				},
+			}
+			converted, err = oneOf.ToJSONSchema()
+			convey.So(err, convey.ShouldBeNil)
+		})
+
+		convey.Convey("user provides map[string]ParameterInfo, converts to json schema in order", func() {
+			params := &ParamsOneOf{
+				params: map[string]*ParameterInfo{
+					"c": {
+						Type: "string",
+					},
+					"a": {
+						Type: "object",
+						SubParams: map[string]*ParameterInfo{
+							"z": {
+								Type: "number",
+							},
+							"y": {
+								Type: "string",
+							},
+						},
+					},
+					"b": {
+						Type: "array",
+						ElemInfo: &ParameterInfo{
+							Type: "object",
+							SubParams: map[string]*ParameterInfo{
+								"p": {
+									Type: "integer",
+								},
+								"o": {
+									Type: "boolean",
+								},
+							},
+						},
+					},
+				},
+			}
+
+			schema1, err := params.ToJSONSchema()
+			assert.NoError(t, err)
+			json1, err := json.Marshal(schema1)
+			assert.NoError(t, err)
+
+			schema2, err := params.ToJSONSchema()
+			assert.NoError(t, err)
+			json2, err := json.Marshal(schema2)
+			assert.NoError(t, err)
+
+			assert.Equal(t, string(json1), string(json2))
+		})
+
+	})
+}
+
+func TestToolInfoSerialization(t *testing.T) {
+	ti1 := &ToolInfo{
+		ParamsOneOf: NewParamsOneOfByParams(map[string]*ParameterInfo{
+			"a": {
+				Type: String,
+				Desc: "desc",
+			},
+		}),
+	}
+	ti2 := &ToolInfo{
+		ParamsOneOf: NewParamsOneOfByJSONSchema(&jsonschema.Schema{
+			Type: "string",
+		}),
+	}
+
+	// json
+	b, err := json.Marshal(ti1)
+	assert.NoError(t, err)
+	result := &ToolInfo{}
+	err = json.Unmarshal(b, result)
+	assert.NoError(t, err)
+	assert.Equal(t, ti1, result)
+	b, err = json.Marshal(ti2)
+	assert.NoError(t, err)
+	result = &ToolInfo{}
+	err = json.Unmarshal(b, result)
+	assert.NoError(t, err)
+	assert.Equal(t, ti2, result)
+
+	// gob
+	buf := new(bytes.Buffer)
+	err = gob.NewEncoder(buf).Encode(ti1)
+	assert.NoError(t, err)
+	result = &ToolInfo{}
+	err = gob.NewDecoder(buf).Decode(result)
+	assert.NoError(t, err)
+	assert.Equal(t, ti1, result)
+	buf = new(bytes.Buffer)
+	err = gob.NewEncoder(buf).Encode(ti2)
+	assert.NoError(t, err)
+	result = &ToolInfo{}
+	err = gob.NewDecoder(buf).Decode(result)
+	assert.NoError(t, err)
+	assert.Equal(t, ti2, result)
+
+	// json roundtrip with empty-but-non-nil params map: must not collapse to nil,
+	// otherwise the params form is silently dropped.
+	tiEmpty := &ToolInfo{
+		ParamsOneOf: NewParamsOneOfByParams(map[string]*ParameterInfo{}),
+	}
+	b, err = json.Marshal(tiEmpty)
+	assert.NoError(t, err)
+	result = &ToolInfo{}
+	err = json.Unmarshal(b, result)
+	assert.NoError(t, err)
+	assert.NotNil(t, result.ParamsOneOf)
+	assert.NotNil(t, result.ParamsOneOf.params)
+	assert.Equal(t, tiEmpty, result)
+}
+
+func TestMCPToolResult_NilErrorCode(t *testing.T) {
+	result := &MCPToolResult{
+		CallID:  "test-call",
+		Name:    "test-tool",
+		Content: "some result",
+		Error: &MCPToolCallError{
+			Code:    nil,
+			Message: "something went wrong",
+		},
+	}
+
+	require.NotPanics(t, func() {
+		s := result.String()
+		t.Logf("String output: %s", s)
+		assert.Contains(t, s, "something went wrong")
+	}, "BUG: MCPToolResult.String() should not panic when Error.Code is nil")
+}
+
+func TestMCPToolResult_WithErrorCode(t *testing.T) {
+	code := int64(500)
+	result := &MCPToolResult{
+		CallID:  "test-call",
+		Name:    "test-tool",
+		Content: "",
+		Error: &MCPToolCallError{
+			Code:    &code,
+			Message: "internal server error",
+		},
+	}
+
+	require.NotPanics(t, func() {
+		s := result.String()
+		assert.Contains(t, s, "500")
+		assert.Contains(t, s, "internal server error")
+	})
+}

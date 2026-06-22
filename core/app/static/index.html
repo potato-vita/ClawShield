@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TraceShield 工作台</title>
+    <style>
+      :root { color-scheme: light; --ink:#17212b; --muted:#617080; --line:#d9e0e7; --bg:#f5f7f9; --panel:#fff; --blue:#1261a0; --red:#b42318; --amber:#a15c00; --green:#18794e; }
+      * { box-sizing: border-box; }
+      body { margin:0; min-width:320px; font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg); letter-spacing:0; }
+      button,input,textarea { font:inherit; letter-spacing:0; }
+      button { border:1px solid var(--line); background:#fff; color:var(--ink); min-height:34px; padding:6px 10px; border-radius:5px; cursor:pointer; }
+      button:hover { border-color:#8da1b5; background:#f7fafc; }
+      button.primary { background:var(--blue); color:#fff; border-color:var(--blue); }
+      header { height:58px; display:flex; align-items:center; justify-content:space-between; padding:0 18px; background:#fff; border-bottom:1px solid var(--line); }
+      h1 { font-size:18px; margin:0; }
+      .health { display:flex; align-items:center; gap:7px; color:var(--muted); }
+      .dot { width:9px; height:9px; border-radius:50%; background:#8795a1; }
+      .dot.ok { background:var(--green); }
+      .summary { display:grid; grid-template-columns:repeat(4,minmax(110px,1fr)); border-bottom:1px solid var(--line); background:#fff; }
+      .metric { padding:13px 18px; border-right:1px solid var(--line); }
+      .metric:last-child { border-right:0; }
+      .metric span { display:block; color:var(--muted); font-size:12px; }
+      .metric strong { font-size:22px; font-weight:650; }
+      .workspace { height:calc(100vh - 130px); min-height:520px; display:grid; grid-template-columns:250px minmax(360px,1fr) 350px; background:#fff; }
+      .pane { min-width:0; display:flex; flex-direction:column; border-right:1px solid var(--line); }
+      .pane:last-child { border-right:0; }
+      .pane-head { min-height:50px; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); }
+      .pane-head h2 { margin:0; font-size:14px; }
+      .scroll { overflow:auto; flex:1; }
+      .sessions,.events { list-style:none; margin:0; padding:0; }
+      .sessions li,.events li { padding:11px 12px; border-bottom:1px solid #edf0f3; cursor:pointer; }
+      .sessions li:hover,.events li:hover,.sessions li.active { background:#eef5fb; }
+      .item-title { font-weight:600; overflow-wrap:anywhere; }
+      .meta { color:var(--muted); font-size:12px; margin-top:3px; }
+      .risk { font-size:11px; font-weight:700; text-transform:uppercase; }
+      .risk.critical { color:var(--red); } .risk.high { color:var(--amber); }
+      .chat-log { padding:16px; display:flex; flex-direction:column; gap:12px; }
+      .message { max-width:86%; padding:10px 12px; border:1px solid var(--line); border-radius:6px; white-space:pre-wrap; overflow-wrap:anywhere; }
+      .message.user { align-self:flex-end; background:#eef5fb; border-color:#bfd4e6; }
+      .message.assistant { align-self:flex-start; background:#fff; }
+      .event-link { color:var(--blue); text-decoration:underline; cursor:pointer; }
+      .composer { border-top:1px solid var(--line); padding:10px; display:grid; grid-template-columns:1fr auto; gap:8px; }
+      textarea { resize:none; width:100%; min-height:48px; max-height:120px; border:1px solid var(--line); border-radius:5px; padding:8px; }
+      .detail { padding:14px; }
+      .detail h3 { font-size:14px; margin:16px 0 6px; }
+      .detail h3:first-child { margin-top:0; }
+      .kv { display:grid; grid-template-columns:110px 1fr; gap:5px 10px; }
+      .kv dt { color:var(--muted); } .kv dd { margin:0; overflow-wrap:anywhere; }
+      .empty { color:var(--muted); padding:22px 14px; text-align:center; }
+      .toolbar { display:flex; gap:6px; }
+      @media (max-width: 920px) { .workspace { height:auto; grid-template-columns:1fr; } .pane { min-height:420px; border-right:0; border-bottom:1px solid var(--line); } .summary { grid-template-columns:repeat(2,1fr); } }
+      @media (max-width: 480px) { header { padding:0 10px; } .summary { grid-template-columns:1fr 1fr; } .metric { padding:10px; } .workspace { grid-template-columns:minmax(0,1fr); } }
+    </style>
+  </head>
+  <body>
+    <header><h1>TraceShield 安全分析工作台</h1><div class="health"><span id="healthDot" class="dot"></span><span id="healthText">Core 检查中</span></div></header>
+    <section class="summary" aria-label="安全统计">
+      <div class="metric"><span>总告警</span><strong id="totalAlerts">0</strong></div>
+      <div class="metric"><span>Critical</span><strong id="criticalCount">0</strong></div>
+      <div class="metric"><span>高危</span><strong id="highCount">0</strong></div>
+      <div class="metric"><span>分析查询</span><strong id="queryCount">0</strong></div>
+    </section>
+    <main class="workspace">
+      <section class="pane"><div class="pane-head"><h2>分析会话</h2><button id="newSession" class="primary">新建</button></div><div class="scroll"><ul id="sessions" class="sessions"></ul></div></section>
+      <section class="pane"><div class="pane-head"><h2 id="chatTitle">安全分析</h2><div class="toolbar"><button id="uploadButton">上传文档</button><input id="fileInput" type="file" hidden /><button id="reportButton">导出报告</button></div></div><div id="chatLog" class="scroll chat-log"><div class="empty">选择或新建会话</div></div><div class="composer"><textarea id="messageInput" placeholder="输入安全分析问题"></textarea><button id="sendButton" class="primary">发送</button></div></section>
+      <section class="pane"><div class="pane-head"><h2>高危事件</h2><button id="refreshButton">刷新</button></div><div class="scroll"><ul id="events" class="events"></ul><div id="detail" class="detail"></div></div></section>
+    </main>
+    <script>
+      const state={sessionId:null,sessions:[],events:[]};
+      const $=id=>document.getElementById(id);
+      const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+      async function json(url,options){const response=await fetch(url,options);if(!response.ok)throw new Error(await response.text());return response.json();}
+      async function loadHealth(){try{const d=await json('/api/module4/health');$('healthText').textContent=d.database==='ok'?'Database OK':'Database Error';$('healthDot').classList.toggle('ok',d.success);}catch{$('healthText').textContent='Core Offline';}}
+      async function loadDashboard(){const d=await json('/api/module4/dashboard?time_range=7d');const s=d.data.summary;$('totalAlerts').textContent=s.total_alerts;$('criticalCount').textContent=s.critical_count;$('highCount').textContent=s.high_risk_count;$('queryCount').textContent=s.query_count;state.events=d.data.high_risk_events;renderEvents();}
+      function renderEvents(){$('events').innerHTML=state.events.map(e=>`<li data-id="${esc(e.event_id)}"><div><span class="risk ${esc(e.risk_level)}">${esc(e.risk_level)}</span></div><div class="item-title">${esc(e.event_title||e.event_id)}</div><div class="meta">${esc(e.timestamp)}</div></li>`).join('')||'<li class="empty">暂无高危事件</li>';document.querySelectorAll('#events li[data-id]').forEach(el=>el.onclick=()=>loadDetail(el.dataset.id));}
+      async function loadDetail(id){const d=await json('/api/module4/events/'+encodeURIComponent(id));const e=d.event;$('detail').innerHTML=`<h3>事件摘要</h3><dl class="kv"><dt>事件 ID</dt><dd>${esc(e.event_id)}</dd><dt>风险</dt><dd>${esc(e.risk_level)} / ${esc(e.risk_score)}</dd><dt>状态</dt><dd>${esc(e.event_status)}</dd><dt>时间</dt><dd>${esc(e.timestamp)}</dd></dl><h3>风险解释</h3><div>${esc(d.risk_explanation)}</div><h3>用户与终端</h3><dl class="kv"><dt>用户</dt><dd>${esc(e.username||'unknown')}</dd><dt>部门</dt><dd>${esc(e.department_name||'未分配')}</dd><dt>主机</dt><dd>${esc(e.host_name||'-')}</dd></dl><h3>工具调用</h3><div>${esc(d.tool_call.tool_name||'-')} · ${esc(d.tool_call.tool_kind||'-')}</div><h3>证据与链路</h3><div>${d.evidence.map(x=>esc(x.type+': '+(x.value||''))).join('<br>')||'无'}</div><h3>处置建议</h3><ul>${d.recommended_actions.map(x=>'<li>'+esc(x)+'</li>').join('')}</ul>`;}
+      async function loadSessions(){state.sessions=await json('/sessions');$('sessions').innerHTML=state.sessions.map(s=>`<li data-id="${esc(s.id)}" class="${s.id===state.sessionId?'active':''}"><div class="item-title">${esc(s.title)}</div><div class="meta">${esc(s.updated_at)}</div></li>`).join('')||'<li class="empty">暂无会话</li>';document.querySelectorAll('#sessions li[data-id]').forEach(el=>el.onclick=()=>selectSession(el.dataset.id));}
+      async function selectSession(id){state.sessionId=id;await loadSessions();const response=await fetch('/sessions/'+encodeURIComponent(id)+'/render');const text=await response.text();const payload=parseSSE(text).at(-1);$('chatLog').innerHTML='';if(payload?.text)appendMessage('assistant',payload.text);$('chatTitle').textContent=state.sessions.find(s=>s.id===id)?.title||'安全分析';}
+      function parseSSE(text){return text.split('\n\n').filter(Boolean).map(block=>{try{return JSON.parse(block.replace(/^data:\s*/,''));}catch{return null;}}).filter(Boolean);}
+      function linkEvents(text){return esc(text).replace(/event_[A-Za-z0-9]+/g,id=>`<span class="event-link" data-event="${id}">${id}</span>`);}
+      function appendMessage(role,text){const div=document.createElement('div');div.className='message '+role;div.innerHTML=linkEvents(text);$('chatLog').appendChild(div);div.querySelectorAll('[data-event]').forEach(el=>el.onclick=()=>loadDetail(el.dataset.event));$('chatLog').scrollTop=$('chatLog').scrollHeight;}
+      async function createSession(){const d=await json('/sessions',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({title:'新分析会话'})});state.sessionId=d.id;await loadSessions();$('chatLog').innerHTML='';}
+      async function sendMessage(message){if(!state.sessionId)await createSession();appendMessage('user',message);const response=await fetch(`/sessions/${state.sessionId}/chat`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message})});const payload=parseSSE(await response.text()).at(-1);appendMessage('assistant',payload?.text||'未返回分析结果');if(payload?.download_url)window.open(payload.download_url,'_blank');await Promise.all([loadSessions(),loadDashboard()]);}
+      $('newSession').onclick=createSession;$('sendButton').onclick=()=>{const v=$('messageInput').value.trim();if(v){$('messageInput').value='';sendMessage(v);}};$('messageInput').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('sendButton').click();}};$('refreshButton').onclick=loadDashboard;$('reportButton').onclick=()=>sendMessage('请生成最近 7 天安全报告');$('uploadButton').onclick=()=>$('fileInput').click();$('fileInput').onchange=async()=>{if(!state.sessionId)await createSession();const data=new FormData();data.append('file',$('fileInput').files[0]);await json(`/sessions/${state.sessionId}/docs`,{method:'POST',body:data});appendMessage('assistant','文档上传成功。');};
+      Promise.all([loadHealth(),loadDashboard(),loadSessions()]).catch(console.error);
+    </script>
+  </body>
+</html>
