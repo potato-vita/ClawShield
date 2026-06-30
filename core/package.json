@@ -1,0 +1,29 @@
+{
+  "name": "@traceshield/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TraceShield Core audit service backed by PostgreSQL.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/server.js",
+    "dev": "tsx src/server.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:check": "tsx src/db/check.ts",
+    "seed:demo": "tsx scripts/seed_demo_data.ts",
+    "smoke": "tsx scripts/smoke_test.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "fastify": "^5.2.1",
+    "pg": "^8.13.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

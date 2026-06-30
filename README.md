@@ -1,6 +1,6 @@
 # TraceShield OpenClaw 插件
 
-TraceShield OpenClaw 插件是一个运行时安全门，用来在 OpenClaw 执行工具调用和事件采集时做同步审计、异步留痕、脱敏处理和本地降级。仓库里同时包含一个用于演示和联调的 Mock Core，用来模拟 TraceShield Core 的 `ALLOW / WARN / ASK / BLOCK` 决策。
+TraceShield OpenClaw 插件是一个运行时安全门，用来在 OpenClaw 执行工具调用和事件采集时做同步审计、异步留痕、脱敏处理和本地降级。仓库现包含 PostgreSQL 支持的真实 Core 雏形；`mock-core` 仅保留用于旧的无数据库演示。
 
 当前状态：插件 MVP 已完成，已在本机真实 OpenClaw Gateway 上验证过危险命令阻断；后续真实环境的更多手工验证结果请继续记录到 [真实 OpenClaw 接入验证](doc/real-openclaw-integration.md)。
 
@@ -10,15 +10,18 @@ TraceShield OpenClaw 插件是一个运行时安全门，用来在 OpenClaw 执�
 - 采集消息、模型输入输出、工具调用和工具结果，并异步上报给 Core。
 - 对敏感内容做摘要、脱敏和哈希，避免把完整原文直接写入事件载荷。
 - 当 Core 不可用时，自动切换到保守的本地降级策略。
+- 对破坏性 shell 命令请求 OpenClaw 人工确认；无审批路由或超时时默认拒绝。
 - 提供 `traceshield_status` 工具，便于在 OpenClaw 中快速确认插件状态。
 
 ## 项目结构
 
 ```text
 traceshield/
+├─ core/              # Fastify + PostgreSQL 审计服务
 ├─ openclaw-plugin/   # TraceShield OpenClaw 插件本体
-├─ mock-core/         # 模拟 Core 的本地调试服务
+├─ mock-core/         # 仅用于旧演示的模拟服务
 ├─ doc/               # 开发日志与阶段性记录
+├─ docker-compose.yml # PostgreSQL 16
 └─ README.md
 ```
 
@@ -33,9 +36,13 @@ traceshield/
 - 脱敏、摘要、哈希和降级策略
 - 类型、测试和插件契约文档
 
+### core
+
+`core/` 是默认联调服务，提供 PostgreSQL 持久化、同步策略决策、异步事件提取、前端查询 API 和 SSE 实时流。完整接口见 [Core API](core/docs/api.md)。
+
 ### mock-core
 
-`mock-core/` 是一个最小可运行的本地审计服务，当前支持：
+`mock-core/` 是一个无数据库的旧演示服务，仅支持：
 
 - `POST /v1/audit/tool-call`
 - `POST /v1/events/batch`
@@ -57,11 +64,15 @@ flowchart LR
 
 ## 快速开始
 
-### 1. 启动 Mock Core
+### 1. 启动 PostgreSQL 和 Core
 
 ```bash
-cd mock-core
+docker compose up -d postgres
+
+cd core
 npm install
+cp .env.example .env
+npm run db:migrate
 npm run dev
 ```
 
@@ -103,7 +114,13 @@ npm run demo:openclaw
 
 ## 配置
 
-### mock-core
+### core
+
+- `TRACESHIELD_DATABASE_URL`: PostgreSQL 连接串。
+- `TRACESHIELD_CORE_PORT`: Core 监听端口，默认 `8787`。
+- `TRACESHIELD_SAVE_RAW_PAYLOAD/PARAMS/RESULT`: raw 数据调试开关，默认均为 `false`。
+
+### mock-core（旧演示）
 
 - `MOCK_CORE_PORT`: Mock Core 监听端口，默认 `8787`。
 
@@ -155,6 +172,8 @@ TRACESHIELD_HIGH_RISK_TOOL_KINDS=shell_exec,file_write,file_delete,network_reque
 ### 同步审计
 
 `before_tool_call` 会把工具名称、工具类别、原始参数摘要和上下文发送给 Core。Core 返回的决策会被映射成 OpenClaw 可执行的放行、阻断、审批或参数改写结果。
+
+`rm -rf`、`mkfs`、`dd if=` 等破坏性命令默认返回 `ASK critical`；有审批 UI/频道时由用户确认，无审批路由或超时时拒绝。敏感文件读取仍直接 `BLOCK`。
 
 ### 异步留痕
 

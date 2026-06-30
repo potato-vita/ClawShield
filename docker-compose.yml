@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: traceshield-postgres
+    environment:
+      POSTGRES_DB: traceshield
+      POSTGRES_USER: traceshield
+      POSTGRES_PASSWORD: traceshield_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - traceshield_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U traceshield -d traceshield"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  traceshield_pgdata:

@@ -17,6 +17,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "demo:core": "TRACESHIELD_CORE_BASE_URL=http://127.0.0.1:8787 tsx src/demo/openclawDemo.ts",
     "demo:openclaw": "tsx src/demo/openclawDemo.ts",
     "format": "prettier --write \"src/**/*.ts\" \"docs/**/*.md\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"docs/**/*.md\"",

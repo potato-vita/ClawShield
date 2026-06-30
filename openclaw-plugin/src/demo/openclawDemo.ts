@@ -1,17 +1,19 @@
 /**
  * TraceShield OpenClaw 插件演示脚本。
  *
- * 前置条件：先启动 mock-core（cd mock-core && npm run dev）
+ * 前置条件：先启动 TraceShield Core。
  * 然后运行：cd openclaw-plugin && npm run demo:openclaw
  *
- * 演示 5 个场景：
+ * 演示 6 个场景：
  *   1. 正常读取 README → ALLOW
  *   2. 读取 .env → BLOCK
- *   3. 执行 rm -rf → BLOCK
+ *   3. 执行 rm -rf → ASK
  *   4. 访问外部 URL → ASK
  *   5. Core 关闭后高危命令 → 本地降级 BLOCK
+ *   6. 通过 EventClient 上报消息与工具结果事件
  */
 import { AuditClient } from "../client/auditClient.js";
+import { EventClient } from "../client/eventClient.js";
 import { mapAuditDecision } from "../policy/decisionMapper.js";
 import { evaluateFallbackPolicy } from "../policy/fallbackPolicy.js";
 import { loadConfig } from "../config.js";
@@ -19,7 +21,7 @@ import { createLogger } from "../logger.js";
 import { createId } from "../utils/id.js";
 import { defaultPluginConfig } from "../types/config.js";
 import type { AuditDecision } from "../types/decision.js";
-import type { AuditRequest } from "../types/event.js";
+import type { AuditRequest, TraceEvent } from "../types/event.js";
 
 const logger = createLogger("traceshield-demo", "info");
 
@@ -109,10 +111,10 @@ async function main(): Promise<void> {
     failed++;
   }
 
-  // ====== 场景 3: rm -rf → BLOCK ======
+  // ====== 场景 3: rm -rf → ASK ======
   console.log("");
   console.log("━".repeat(50));
-  console.log("场景 3: 执行 rm -rf → 应返回 BLOCK");
+  console.log("场景 3: 执行 rm -rf → 应返回 ASK");
   console.log("━".repeat(50));
   try {
     const result = await auditClient.auditToolCall(
@@ -127,11 +129,12 @@ async function main(): Promise<void> {
     console.log(`  Core 决策 : ${result.decision} (risk: ${result.risk_level})`);
     console.log(`  原因      : ${result.reason}`);
     console.log(`  命中规则  : ${result.matched_rules.join(", ")}`);
-    if (mapped.block) {
-      console.log("  ✅ 通过 — 危险命令被阻断");
+    if (mapped.requireApproval && result.decision === "ASK") {
+      console.log(`  审批信息  : ${mapped.requireApproval.title}`);
+      console.log("  ✅ 通过 — 危险命令需要用户确认");
       passed++;
     } else {
-      console.log(`  ⚠️  预期 BLOCK，实际 ${result.decision}`);
+      console.log(`  ⚠️  预期 ASK，实际 ${result.decision}`);
       failed++;
     }
   } catch (err) {
@@ -219,6 +222,65 @@ async function main(): Promise<void> {
     failed++;
   }
 
+  // ====== 场景 6: 异步事件上报 ======
+  console.log("");
+  console.log("━".repeat(50));
+  console.log("场景 6: 上报消息与工具结果事件");
+  console.log("━".repeat(50));
+  try {
+    const eventClient = new EventClient({
+      baseUrl: config.core_base_url,
+      timeoutMs: config.event_flush_timeout_ms,
+    });
+    const timestamp = Date.now();
+    const runId = createId("demo_run");
+    const toolCallId = createId("demo_tool");
+    const common = {
+      schema_version: "v1" as const,
+      timestamp,
+      plugin_id: config.plugin_id,
+      session_id: "demo-session",
+      run_id: runId,
+      trace_id: createId("demo_trace"),
+      mode: "async" as const,
+    };
+    const events: TraceEvent[] = [
+      {
+        ...common,
+        event_id: createId("evt"),
+        type: "message_received",
+        payload: {
+          message_id: createId("message"),
+          role: "user",
+          content: "TraceShield demo message",
+          content_hash: "demo-content-hash",
+          summary: { type: "string", length: 24 },
+        },
+      },
+      {
+        ...common,
+        event_id: createId("evt"),
+        type: "after_tool_call",
+        payload: {
+          tool_call_id: toolCallId,
+          tool_name: "file_read",
+          tool_kind: "file_read",
+          result_preview: "README read completed",
+          result_hash: "demo-result-hash",
+          result_summary: { type: "string", length: 21 },
+          duration_ms: 5,
+        },
+      },
+    ];
+    await eventClient.sendBatch(events);
+    console.log(`  事件上报 : ${events.length} 条`);
+    console.log("  ✅ 通过 — EventClient 批量上报成功");
+    passed++;
+  } catch (err) {
+    console.log(`  ❌ 异常: ${err instanceof Error ? err.message : String(err)}`);
+    failed++;
+  }
+
   // ====== 结果汇总 ======
   console.log("");
   console.log("═".repeat(50));
@@ -229,7 +291,7 @@ async function main(): Promise<void> {
     console.log("  🎉 所有演示场景通过！");
   } else {
     console.log(
-      `  ⚠️  ${failed} 个场景未通过，请检查 Mock Core 是否正常运行在 ${config.core_base_url}`,
+      `  ⚠️  ${failed} 个场景未通过，请检查 Core 是否正常运行在 ${config.core_base_url}`,
     );
   }
 
