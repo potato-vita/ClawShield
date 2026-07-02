@@ -3,6 +3,7 @@
 Base URL: `http://127.0.0.1:8787`
 
 All non-SSE endpoints accept and return JSON. Timestamps in plugin events are Unix milliseconds; timestamps returned from PostgreSQL are ISO 8601 strings.
+Core binds to loopback and returns CORS headers so the local Web console on port 5173 can use HTTP and SSE directly.
 
 ## Health and dashboard
 
@@ -128,6 +129,14 @@ Response:
 
 ## Queries
 
+### `GET /v1/audit/sessions?filter=all`
+
+Returns sessions derived from both message/trace events and tool calls. Use `filter=risk` to keep only high-risk or blocked sessions.
+
+### `GET /v1/audit/sessions/:sessionId/runs`
+
+Returns all runs for a session, newest first.
+
 ### `GET /v1/audit/events?limit=50`
 
 Returns `{ "events": [...], "limit": 50 }`. Limit range: 1–200.
@@ -147,6 +156,10 @@ Returns `{ "run_id": "...", "steps": [...] }` in evidence order.
 ### `GET /v1/runs/:runId/risk-graph`
 
 Returns `{ "run_id": "...", "nodes": [...], "edges": [...] }`. The graph is generated at query time and is not persisted.
+
+### `GET /v1/runs/:runId/conversation-summary`
+
+Returns sanitized message summaries for the run. Raw message payloads are never returned.
 
 ## Live stream
 

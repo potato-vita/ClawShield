@@ -1,0 +1,17 @@
+[Unit]
+Description=TraceShield Core audit service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/claw/桌面/traceshield/core
+ExecStart=/usr/bin/env npm run start
+Restart=on-failure
+RestartSec=3
+Environment=NODE_ENV=production
+Environment=NO_PROXY=127.0.0.1,localhost
+Environment=no_proxy=127.0.0.1,localhost
+
+[Install]
+WantedBy=default.target

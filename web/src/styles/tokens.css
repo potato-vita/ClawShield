@@ -1,0 +1,21 @@
+:root {
+  --trace-red: #c91f37;
+  --trace-red-deep: #9f172b;
+  --trace-red-soft: #e85d6f;
+  --trace-blush: #fff6f5;
+  --trace-canvas: #f7f7f6;
+  --trace-metal: #cbd5e1;
+  --trace-blue: #2563eb;
+  --trace-ink: #18202b;
+  --trace-muted: #657184;
+  --trace-border: #e3e7ec;
+  --trace-panel: #ffffff;
+  --trace-success: #158466;
+  --trace-warning: #c17600;
+  --trace-radius-sm: 8px;
+  --trace-radius: 14px;
+  --trace-radius-lg: 20px;
+  --trace-shadow: 0 14px 38px rgba(30, 41, 59, 0.07);
+  --trace-font-sans: Inter, "SF Pro Display", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --trace-font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+}

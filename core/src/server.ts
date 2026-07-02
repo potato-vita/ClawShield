@@ -12,6 +12,17 @@ import { registerStreamRoutes } from "./routes/stream.js";
 export function buildServer(): FastifyInstance {
   const app = Fastify({ logger: true });
 
+  // Core only binds to loopback, but the Web console uses a separate local port.
+  // Keep local HTTP/SSE usable without requiring a reverse proxy.
+  app.addHook("onRequest", async (request, reply) => {
+    reply.header("Access-Control-Allow-Origin", "*");
+    reply.header("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
+    reply.header("Access-Control-Allow-Headers", "Content-Type,Accept,Last-Event-ID");
+    if (request.method === "OPTIONS") {
+      return reply.code(204).send();
+    }
+  });
+
   app.register(registerHealthRoutes);
   app.register(registerDashboardRoutes);
   app.register(registerAuditRoutes);

@@ -1,0 +1,16 @@
+[Unit]
+Description=TraceShield Web audit console
+After=traceshield-core.service
+Wants=traceshield-core.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/claw/桌面/traceshield/web
+ExecStart=/usr/bin/env npm run preview -- --port 5173
+Restart=on-failure
+RestartSec=3
+Environment=NO_PROXY=127.0.0.1,localhost
+Environment=no_proxy=127.0.0.1,localhost
+
+[Install]
+WantedBy=default.target

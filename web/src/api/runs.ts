@@ -1,0 +1,18 @@
+import {apiGet} from "./client";
+import type {EvidenceStep} from "@/types/evidence";
+import type {GraphEdge,GraphNode,GraphNodeType} from "@/types/graph";
+import type {ConversationMessage,Decision,RiskLevel} from "@/types/session";
+
+interface CoreGraphNode{id:string;type:string;label:string;tool_call_id?:string;resource_hint?:string|null;risk_level?:string;decision?:string|null;reason?:string|null;matched_rules?:string[]}
+interface CoreGraphEdge{id:string;source:string;target:string;type?:string}
+interface CoreEvidenceStep{evidence_step_id:string;step_order:number;step_type:string;title:string;detail:unknown;decision?:string|null;risk_level?:string|null;tool_call_id?:string|null}
+const risk=(value?:string|null):RiskLevel=>["critical","high","medium","low"].includes(value??"")?value as RiskLevel:"low";
+const decision=(value?:string|null):Decision|undefined=>value?value.toUpperCase()==="BLOCK"?"block":value.toUpperCase()==="ALLOW"?"allow":"review":undefined;
+const nodeType=(value:string,label:string):GraphNodeType=>value==="user_request"?"user_intent":label.toLowerCase().includes("send")||label.toLowerCase().includes("http")?"network_sink":"tool_call";
+
+export async function getRiskGraph(runId:string):Promise<{nodes:GraphNode[];edges:GraphEdge[]}>{const data=await apiGet<{nodes:CoreGraphNode[];edges:CoreGraphEdge[]}>(`/v1/runs/${encodeURIComponent(runId)}/risk-graph`);return{nodes:data.nodes.map(node=>({id:node.id,type:nodeType(node.type,node.label),label:node.label,detail:node.resource_hint??node.reason??"Core audit node",risk:risk(node.risk_level),decision:decision(node.decision),toolCallId:node.tool_call_id,evidenceStepId:undefined,policyId:node.matched_rules?.[0]})),edges:data.edges.map(edge=>({id:edge.id,source:edge.source,target:edge.target,kind:"main"}))};}
+export async function getEvidencePath(runId:string):Promise<EvidenceStep[]>{const data=await apiGet<{steps:CoreEvidenceStep[]}>(`/v1/runs/${encodeURIComponent(runId)}/evidence-path`);return data.steps.map((step,index)=>({id:step.evidence_step_id,step:String(step.step_order+1).padStart(2,"0"),type:normalizeStep(step.step_type),title:step.title,detail:typeof step.detail==="string"?step.detail:JSON.stringify(step.detail),status:decision(step.decision)==="block"?"blocked":risk(step.risk_level)==="critical"?"critical":risk(step.risk_level)==="high"?"risk":"verified",nodeId:step.tool_call_id?`tool:${step.tool_call_id}`:`evidence:${index}`}));}
+interface CoreConversationMessage{message_row_id:string;event_id:string;event_type:string;role:string|null;summary:unknown;occurred_at:string}
+export async function getConversationSummary(runId:string):Promise<ConversationMessage[]>{const data=await apiGet<{messages:CoreConversationMessage[]}>(`/v1/runs/${encodeURIComponent(runId)}/conversation-summary`);return data.messages.map(message=>({id:message.message_row_id,role:message.role==="user"||message.event_type==="message_received"?"user":"assistant",summary:summaryText(message.summary,message.event_type)}));}
+export function summaryText(value:unknown,fallback="Conversation event"):string{if(value&&typeof value==="object"){const record=value as Record<string,unknown>;if(typeof record.preview==="string")return record.preview;if(typeof record.value==="string")return record.value;if(Array.isArray(record.keys))return `Structured message: ${record.keys.map(String).join(", ")}`;}return fallback.replaceAll("_"," ");}
+function normalizeStep(value:string):EvidenceStep["type"]{if(value.includes("decision"))return"decision";if(value.includes("network"))return"network";if(value.includes("object"))return"object";if(value.includes("intent"))return"intent";return"tool";}

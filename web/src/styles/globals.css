@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-width: 1180px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  color: var(--trace-ink);
+  background: var(--trace-canvas);
+  font-family: var(--trace-font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  color: #fff;
+  background: rgba(201, 31, 55, 0.78);
+}
+
+.page-shell {
+  min-height: 100vh;
+  padding: 40px;
+  background: var(--trace-canvas);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.placeholder-card {
+  max-width: 780px;
+  margin: 8vh auto 0;
+  padding: 42px;
+  border: 1px solid var(--trace-border);
+  border-radius: var(--trace-radius-lg);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--trace-shadow);
+}

@@ -64,6 +64,8 @@ export async function registerEventRoutes(app: FastifyInstance): Promise<void> {
         session_id: event.session_id,
         run_id: event.run_id,
         trace_id: event.trace_id,
+        role: typeof event.payload.role === "string" ? event.payload.role : null,
+        summary: event.payload.summary ?? null,
       });
     }
 
