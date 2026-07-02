@@ -1,0 +1,81 @@
+# Phase 7 Shadow Statistics
+
+```json
+{
+  "generated_at": "2026-07-02T09:16:45.749Z",
+  "summary": {
+    "total": 7,
+    "ok": 6,
+    "timeout": 1,
+    "error": 0,
+    "unavailable": 0,
+    "p50": 0.807170999905793,
+    "p95": 3.4535567538114265,
+    "p99": 3.752672954578884
+  },
+  "diff_types": [
+    {
+      "key": "same_action",
+      "count": 5
+    },
+    {
+      "key": "risk_level_changed",
+      "count": 1
+    },
+    {
+      "key": "none",
+      "count": 1
+    }
+  ],
+  "violation_types": [
+    {
+      "key": "step_step_inconsistency",
+      "count": 5
+    },
+    {
+      "key": "intent_tool_inconsistency",
+      "count": 5
+    },
+    {
+      "key": "intent_resource_inconsistency",
+      "count": 3
+    },
+    {
+      "key": "chain_semantic_drift",
+      "count": 1
+    }
+  ],
+  "trace_completeness": [
+    {
+      "key": "previous_observation_pending",
+      "count": 5
+    },
+    {
+      "key": "complete",
+      "count": 2
+    }
+  ],
+  "tool_kinds": [
+    {
+      "key": "file_read",
+      "count": 22
+    },
+    {
+      "key": "shell_exec",
+      "count": 16
+    },
+    {
+      "key": "unknown",
+      "count": 14
+    },
+    {
+      "key": "network_request",
+      "count": 12
+    },
+    {
+      "key": "file_write",
+      "count": 3
+    }
+  ]
+}
+```

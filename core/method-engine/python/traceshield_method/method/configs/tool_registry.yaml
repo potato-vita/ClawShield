@@ -1,0 +1,504 @@
+tools:
+  traceshield_status:
+    tool_type: security
+    semantic_action: status_read
+    risk_level: low
+    resource_arg: null
+
+  get_current_day:
+    tool_type: calendar
+    semantic_action: calendar
+    risk_level: low
+    resource_arg: null
+
+  search_calendar_events:
+    tool_type: calendar
+    semantic_action: read_calendar
+    risk_level: medium
+    resource_arg: query
+
+  get_day_calendar_events:
+    tool_type: calendar
+    semantic_action: read_calendar
+    risk_level: medium
+    resource_arg: day
+
+  create_calendar_event:
+    tool_type: calendar
+    semantic_action: create_calendar_event
+    risk_level: high
+    resource_arg: title
+
+  cancel_calendar_event:
+    tool_type: calendar
+    semantic_action: modify_calendar_event
+    risk_level: high
+    resource_arg: event_id
+
+  reschedule_calendar_event:
+    tool_type: calendar
+    semantic_action: modify_calendar_event
+    risk_level: high
+    resource_arg: event_id
+
+  add_calendar_event_participants:
+    tool_type: calendar
+    semantic_action: modify_calendar_event
+    risk_level: high
+    resource_arg: event_id
+
+  search_emails:
+    tool_type: email
+    semantic_action: read_email
+    risk_level: medium
+    resource_arg: query
+
+  get_unread_emails:
+    tool_type: email
+    semantic_action: read_email
+    risk_level: medium
+    resource_arg: null
+
+  get_sent_emails:
+    tool_type: email
+    semantic_action: read_email
+    risk_level: medium
+    resource_arg: null
+
+  get_received_emails:
+    tool_type: email
+    semantic_action: read_email
+    risk_level: medium
+    resource_arg: null
+
+  get_draft_emails:
+    tool_type: email
+    semantic_action: read_email
+    risk_level: medium
+    resource_arg: null
+
+  send_email:
+    tool_type: email
+    semantic_action: send_email
+    risk_level: high
+    resource_arg: recipients
+
+  delete_email:
+    tool_type: email
+    semantic_action: delete_email
+    risk_level: high
+    resource_arg: email_id
+
+  search_contacts_by_name:
+    tool_type: contacts
+    semantic_action: read_contacts
+    risk_level: medium
+    resource_arg: query
+
+  search_contacts_by_email:
+    tool_type: contacts
+    semantic_action: read_contacts
+    risk_level: medium
+    resource_arg: email
+
+  list_files:
+    tool_type: file
+    semantic_action: list_files
+    risk_level: low
+    resource_arg: path
+
+  search_files:
+    tool_type: file
+    semantic_action: list_files
+    risk_level: medium
+    resource_arg: query
+
+  search_files_by_filename:
+    tool_type: file
+    semantic_action: list_files
+    risk_level: medium
+    resource_arg: filename
+
+  get_file_by_id:
+    tool_type: file
+    semantic_action: read_file
+    risk_level: medium
+    resource_arg: file_id
+
+  create_file:
+    tool_type: file
+    semantic_action: write_file
+    risk_level: high
+    resource_arg: filename
+
+  append_to_file:
+    tool_type: file
+    semantic_action: write_file
+    risk_level: high
+    resource_arg: file_id
+
+  share_file:
+    tool_type: file
+    semantic_action: external_send
+    risk_level: high
+    resource_arg: file_id
+
+  read_file:
+    tool_type: file
+    semantic_action: read_file
+    risk_level: medium
+    resource_arg: path
+
+  get_webpage:
+    tool_type: web
+    semantic_action: web_click
+    risk_level: medium
+    resource_arg: url
+
+  post_webpage:
+    tool_type: web
+    semantic_action: external_send
+    risk_level: high
+    resource_arg: url
+
+  read_channel_messages:
+    tool_type: slack
+    semantic_action: read_email
+    risk_level: medium
+    resource_arg: channel
+
+  read_inbox:
+    tool_type: slack
+    semantic_action: read_email
+    risk_level: medium
+    resource_arg: user
+
+  get_channels:
+    tool_type: slack
+    semantic_action: read_user_data
+    risk_level: low
+    resource_arg: null
+
+  get_users_in_channel:
+    tool_type: slack
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: channel
+
+  send_direct_message:
+    tool_type: slack
+    semantic_action: external_send
+    risk_level: high
+    resource_arg: recipient
+
+  send_channel_message:
+    tool_type: slack
+    semantic_action: external_send
+    risk_level: high
+    resource_arg: channel
+
+  invite_user_to_slack:
+    tool_type: slack
+    semantic_action: external_send
+    risk_level: high
+    resource_arg: user_email
+
+  add_user_to_channel:
+    tool_type: slack
+    semantic_action: write_user_data
+    risk_level: high
+    resource_arg: channel
+
+  remove_user_from_slack:
+    tool_type: slack
+    semantic_action: write_user_data
+    risk_level: high
+    resource_arg: user
+
+  get_user_information:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: resource
+
+  get_all_hotels_in_city:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: city
+
+  get_hotels_prices:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: hotel_names
+
+  get_hotels_address:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: hotel_name
+
+  get_rating_reviews_for_hotels:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: hotel_names
+
+  get_all_restaurants_in_city:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: city
+
+  get_restaurants_address:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: restaurant_names
+
+  get_rating_reviews_for_restaurants:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: restaurant_names
+
+  get_cuisine_type_for_restaurants:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: restaurant_names
+
+  get_dietary_restrictions_for_all_restaurants:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: restaurant_names
+
+  get_contact_information_for_restaurants:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: restaurant_names
+
+  get_price_for_restaurants:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: restaurant_names
+
+  check_restaurant_opening_hours:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: restaurant_names
+
+  get_all_car_rental_companies_in_city:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: city
+
+  get_car_types_available:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: company_name
+
+  get_rating_reviews_for_car_rental:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: company_name
+
+  get_car_rental_address:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: company_name
+
+  get_car_fuel_options:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: company_name
+
+  get_car_price_per_day:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: company_name
+
+  get_flight_information:
+    tool_type: travel
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: departure_city
+
+  reserve_hotel:
+    tool_type: travel
+    semantic_action: external_send
+    risk_level: high
+    resource_arg: hotel
+
+  reserve_restaurant:
+    tool_type: travel
+    semantic_action: external_send
+    risk_level: high
+    resource_arg: restaurant
+
+  reserve_car_rental:
+    tool_type: travel
+    semantic_action: external_send
+    risk_level: high
+    resource_arg: company
+
+  send_money:
+    tool_type: banking
+    semantic_action: external_send
+    risk_level: high
+    resource_arg: recipient
+
+  schedule_transaction:
+    tool_type: banking
+    semantic_action: external_send
+    risk_level: high
+    resource_arg: recipient
+
+  update_scheduled_transaction:
+    tool_type: banking
+    semantic_action: modify_financial_transaction
+    risk_level: high
+    resource_arg: id
+
+  get_balance:
+    tool_type: banking
+    semantic_action: read_financial_data
+    risk_level: medium
+    resource_arg: account
+
+  get_iban:
+    tool_type: banking
+    semantic_action: read_financial_data
+    risk_level: medium
+    resource_arg: account
+
+  get_most_recent_transactions:
+    tool_type: banking
+    semantic_action: read_financial_data
+    risk_level: medium
+    resource_arg: account
+
+  get_scheduled_transactions:
+    tool_type: banking
+    semantic_action: read_financial_data
+    risk_level: medium
+    resource_arg: account
+
+  get_user_info:
+    tool_type: user_account
+    semantic_action: read_user_data
+    risk_level: medium
+    resource_arg: null
+
+  update_user_info:
+    tool_type: user_account
+    semantic_action: write_user_data
+    risk_level: high
+    resource_arg: null
+
+  update_password:
+    tool_type: user_account
+    semantic_action: modify_credentials
+    risk_level: high
+    resource_arg: null
+
+  write_file:
+    tool_type: file
+    semantic_action: write_file
+    risk_level: medium
+    resource_arg: path
+
+  delete_file:
+    tool_type: file
+    semantic_action: delete_file
+    risk_level: high
+    resource_arg: path
+
+  summarize_text:
+    tool_type: text
+    semantic_action: summarize_text
+    risk_level: low
+    resource_arg: null
+
+  final_answer:
+    tool_type: output
+    semantic_action: final_answer
+    risk_level: low
+    resource_arg: null
+
+  network_post:
+    tool_type: network
+    semantic_action: network_post
+    risk_level: high
+    resource_arg: url
+
+  shell_exec:
+    tool_type: command
+    semantic_action: shell_exec
+    risk_level: high
+    resource_arg: command
+
+  LoadDB:
+    tool_type: database
+    semantic_action: load_database
+    risk_level: medium
+    resource_arg: DBNAME
+
+  FilterDB:
+    tool_type: database
+    semantic_action: filter_database
+    risk_level: medium
+    resource_arg: DATABASE
+
+  GetValue:
+    tool_type: database
+    semantic_action: read_database_field
+    risk_level: medium
+    resource_arg: ARGUMENT
+
+  SQLInterpreter:
+    tool_type: database
+    semantic_action: sql_query
+    risk_level: medium
+    resource_arg: RESOURCES
+
+  Calculate:
+    tool_type: compute
+    semantic_action: calculate
+    risk_level: low
+    resource_arg: null
+
+  Calendar:
+    tool_type: compute
+    semantic_action: calendar
+    risk_level: low
+    resource_arg: null
+
+  web_search:
+    tool_type: web
+    semantic_action: web_search
+    risk_level: low
+    resource_arg: query
+
+  web_click:
+    tool_type: web
+    semantic_action: web_click
+    risk_level: medium
+    resource_arg: target
+
+  web_submit:
+    tool_type: web
+    semantic_action: web_submit
+    risk_level: high
+    resource_arg: target

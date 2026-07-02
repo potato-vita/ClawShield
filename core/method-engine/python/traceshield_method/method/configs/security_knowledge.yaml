@@ -1,0 +1,194 @@
+sources:
+  - id: owasp_llm_top10_2025
+    name: OWASP Top 10 for LLM Applications 2025
+    url: https://owasp.org/www-project-top-10-for-large-language-model-applications/
+    mapped_risks:
+      - LLM01 Prompt Injection
+      - LLM02 Sensitive Information Disclosure
+      - LLM06 Excessive Agency
+      - LLM07 System Prompt Leakage
+      - LLM08 Vector and Embedding Weakness
+  - id: owasp_agentic_top10
+    name: OWASP Top 10 for Agentic Applications
+    url: https://genai.owasp.org/
+    mapped_risks:
+      - Agent Behavior Hijacking
+      - Tool Misuse and Exploitation
+      - Identity and Privilege Abuse
+      - Memory and Context Poisoning
+  - id: nvidia_nemo_guardrails
+    name: NVIDIA NeMo Guardrails rail types
+    url: https://docs.nvidia.com/nemo/guardrails/latest/about/rail-types.html
+    mapped_risks:
+      - Input rails
+      - Retrieval rails
+      - Dialog rails
+      - Execution rails
+      - Output rails
+
+action_groups:
+  sensitive_read_actions:
+    - read_file
+    - read_database_field
+    - sql_query
+    - read_calendar
+    - read_email
+    - read_contacts
+    - read_financial_data
+    - read_user_data
+  external_sink_actions:
+    - network_post
+    - external_send
+    - send_email
+    - web_submit
+  destructive_actions:
+    - delete_file
+    - delete_email
+    - modify_credentials
+    - modify_financial_transaction
+  state_changing_actions:
+    - write_file
+    - create_file
+    - append_to_file
+    - create_calendar_event
+    - modify_calendar_event
+    - write_user_data
+    - modify_credentials
+    - modify_financial_transaction
+  write_actions:
+    - write_file
+    - create_file
+    - append_to_file
+  semantic_transform_actions:
+    - summarize_text
+    - calculate
+    - filter_database
+    - aggregate
+    - final_answer
+
+semantic_relations:
+  action_keywords:
+    read_file:
+      - read
+      - open
+      - inspect
+      - summarize
+      - file
+      - 读取
+      - 查看
+      - 总结
+      - 文件
+    send_email:
+      - email
+      - mail
+      - message
+      - notify
+      - send
+      - forward
+      - 邮件
+      - 发送
+      - 通知
+    external_send:
+      - send
+      - transfer
+      - share
+      - forward
+      - pay
+      - payment
+      - wire
+      - 转账
+      - 发送
+      - 分享
+    network_post:
+      - post
+      - upload
+      - webhook
+      - api
+      - submit
+      - 上传
+      - 提交
+      - 外发
+    web_submit:
+      - submit
+      - form
+      - checkout
+      - apply
+      - 提交
+      - 表单
+    delete_file:
+      - delete
+      - remove
+      - erase
+      - clean
+      - 删除
+      - 清理
+    write_file:
+      - write
+      - create
+      - append
+      - save
+      - update
+      - 写入
+      - 保存
+      - 创建
+    create_calendar_event:
+      - calendar
+      - schedule
+      - meeting
+      - book
+      - 日历
+      - 会议
+      - 预约
+    modify_financial_transaction:
+      - transaction
+      - payment
+      - transfer
+      - bank
+      - 转账
+      - 交易
+      - 银行
+
+risk_graph_rules:
+  sensitive_source_to_external_sink:
+    enabled: true
+    source_actions_ref: sensitive_read_actions
+    sink_actions_ref: external_sink_actions
+    violation_type: chain_semantic_drift
+    mapped_standards:
+      - owasp_llm_top10_2025: LLM02 Sensitive Information Disclosure
+      - owasp_llm_top10_2025: LLM06 Excessive Agency
+      - owasp_agentic_top10: Tool Misuse and Exploitation
+  injection_source_to_dangerous_sink:
+    enabled: true
+    sink_actions:
+      - network_post
+      - external_send
+      - send_email
+      - shell_exec
+      - delete_file
+      - web_submit
+      - create_calendar_event
+      - modify_calendar_event
+      - modify_financial_transaction
+      - write_user_data
+      - modify_credentials
+    violation_type: prompt_injection_induced_drift
+    mapped_standards:
+      - owasp_llm_top10_2025: LLM01 Prompt Injection
+      - owasp_agentic_top10: Agent Behavior Hijacking
+      - owasp_agentic_top10: Tool Misuse and Exploitation
+  forbidden_resource_to_external_sink:
+    enabled: true
+    source_actions_ref: sensitive_read_actions
+    sink_actions_ref: external_sink_actions
+    violation_type: chain_semantic_drift
+    mapped_standards:
+      - owasp_llm_top10_2025: LLM02 Sensitive Information Disclosure
+  destructive_after_sensitive_read:
+    enabled: true
+    source_actions_ref: sensitive_read_actions
+    sink_actions_ref: destructive_actions
+    violation_type: chain_semantic_drift
+    mapped_standards:
+      - owasp_llm_top10_2025: LLM06 Excessive Agency
+      - owasp_agentic_top10: Tool Misuse and Exploitation

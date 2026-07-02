@@ -14,6 +14,9 @@ export interface AuditRequest {
   run_id: string;
   trace_id: string;
   tool_call_id: string;
+  step_seq?: number;
+  semantic_schema_version?: "v1";
+  correlation_source?: string;
   tool_name: string;
   tool_kind: string;
   raw_params: Record<string, unknown>;
@@ -41,6 +44,9 @@ export interface AuditDecision {
   modified_params?: Record<string, unknown> | null;
   approval?: AuditApproval | null;
   fallback_used?: boolean;
+  engine?: "method" | "legacy" | "fallback";
+  engine_version?: string;
+  method_evaluation_id?: string;
 }
 
 export type TraceEventType =

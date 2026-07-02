@@ -1,0 +1,209 @@
+{
+  "generated_at": "2026-07-02T09:32:11.656Z",
+  "fixture_count": 12,
+  "request_count": 240,
+  "passed": 12,
+  "failed": 0,
+  "availability": 1,
+  "timeout_rate": 0,
+  "error_rate": 0,
+  "latency_ms": {
+    "p50": 38.030297999999675,
+    "p95": 68.1819489999998,
+    "p99": 98.99033899999995
+  },
+  "results": [
+    {
+      "fixture": "allowed/read-public.json",
+      "name": "read public file",
+      "expected": "ALLOW",
+      "actual": "ALLOW",
+      "passed": true,
+      "current_violation_count": 0,
+      "block_has_current_evidence": true,
+      "mapping": {
+        "step_id": 1,
+        "registry_version": "v2",
+        "mapping_source": "exact_registry",
+        "mapping_confidence": 1
+      },
+      "trace_completeness": "complete"
+    },
+    {
+      "fixture": "allowed/tool-error.json",
+      "name": "failed read still occupies step",
+      "expected": "ALLOW",
+      "actual": "ALLOW",
+      "passed": true,
+      "current_violation_count": 0,
+      "block_has_current_evidence": true,
+      "mapping": {
+        "step_id": 1,
+        "registry_version": "v2",
+        "mapping_source": "exact_registry",
+        "mapping_confidence": 1
+      },
+      "trace_completeness": "complete"
+    },
+    {
+      "fixture": "allowed/traceshield-status.json",
+      "name": "TraceShield status tool",
+      "expected": "ALLOW",
+      "actual": "ALLOW",
+      "passed": true,
+      "current_violation_count": 0,
+      "block_has_current_evidence": true,
+      "mapping": {
+        "step_id": 1,
+        "registry_version": "v2",
+        "mapping_source": "exact_registry",
+        "mapping_confidence": 1
+      },
+      "trace_completeness": "complete"
+    },
+    {
+      "fixture": "ask/dangerous-shell.json",
+      "name": "dangerous shell",
+      "expected": "ASK",
+      "actual": "ASK",
+      "passed": true,
+      "current_violation_count": 1,
+      "block_has_current_evidence": true,
+      "mapping": {
+        "step_id": 1,
+        "registry_version": "v2",
+        "mapping_source": "tool_kind_fallback",
+        "mapping_confidence": 0.7
+      },
+      "trace_completeness": "complete"
+    },
+    {
+      "fixture": "ask/unknown-tool.json",
+      "name": "unknown tool",
+      "expected": "ASK",
+      "actual": "ASK",
+      "passed": true,
+      "current_violation_count": 1,
+      "block_has_current_evidence": true,
+      "mapping": {
+        "step_id": 1,
+        "registry_version": "v2",
+        "mapping_source": "unknown",
+        "mapping_confidence": 0
+      },
+      "trace_completeness": "complete"
+    },
+    {
+      "fixture": "authorization/exact-payment.json",
+      "name": "exact authorized payment",
+      "expected": "ALLOW",
+      "actual": "ALLOW",
+      "passed": true,
+      "current_violation_count": 0,
+      "block_has_current_evidence": true,
+      "mapping": {
+        "step_id": 1,
+        "registry_version": "v2",
+        "mapping_source": "exact_registry",
+        "mapping_confidence": 1
+      },
+      "trace_completeness": "complete"
+    },
+    {
+      "fixture": "block/sensitive-read.json",
+      "name": "read sensitive file",
+      "expected": "BLOCK",
+      "actual": "BLOCK",
+      "passed": true,
+      "current_violation_count": 1,
+      "block_has_current_evidence": true,
+      "mapping": {
+        "step_id": 1,
+        "registry_version": "v2",
+        "mapping_source": "exact_registry",
+        "mapping_confidence": 1
+      },
+      "trace_completeness": "complete"
+    },
+    {
+      "fixture": "injection/injected-egress.json",
+      "name": "prompt injection to egress",
+      "expected": "BLOCK",
+      "actual": "BLOCK",
+      "passed": true,
+      "current_violation_count": 4,
+      "block_has_current_evidence": true,
+      "mapping": {
+        "step_id": 2,
+        "registry_version": "v2",
+        "mapping_source": "exact_registry",
+        "mapping_confidence": 1
+      },
+      "trace_completeness": "complete"
+    },
+    {
+      "fixture": "provenance-barrier/public-only.json",
+      "name": "public-only sink",
+      "expected": "ALLOW",
+      "actual": "ALLOW",
+      "passed": true,
+      "current_violation_count": 0,
+      "block_has_current_evidence": true,
+      "mapping": {
+        "step_id": 3,
+        "registry_version": "v2",
+        "mapping_source": "exact_registry",
+        "mapping_confidence": 1
+      },
+      "trace_completeness": "complete"
+    },
+    {
+      "fixture": "sensitive-egress/out-of-order.json",
+      "name": "out of order sensitive egress",
+      "expected": "BLOCK",
+      "actual": "BLOCK",
+      "passed": true,
+      "current_violation_count": 2,
+      "block_has_current_evidence": true,
+      "mapping": {
+        "step_id": 2,
+        "registry_version": "v2",
+        "mapping_source": "exact_registry",
+        "mapping_confidence": 1
+      },
+      "trace_completeness": "complete"
+    },
+    {
+      "fixture": "sensitive-egress/secret-to-network.json",
+      "name": "sensitive read to network",
+      "expected": "BLOCK",
+      "actual": "BLOCK",
+      "passed": true,
+      "current_violation_count": 4,
+      "block_has_current_evidence": true,
+      "mapping": {
+        "step_id": 2,
+        "registry_version": "v2",
+        "mapping_source": "exact_registry",
+        "mapping_confidence": 1
+      },
+      "trace_completeness": "complete"
+    },
+    {
+      "fixture": "warn/history-only.json",
+      "name": "history does not block current",
+      "expected": "WARN",
+      "actual": "WARN",
+      "passed": true,
+      "current_violation_count": 0,
+      "block_has_current_evidence": true,
+      "mapping": {
+        "step_id": 2,
+        "registry_version": "v2",
+        "mapping_source": "exact_registry",
+        "mapping_confidence": 1
+      },
+      "trace_completeness": "complete"
+    }
+  ]
+}

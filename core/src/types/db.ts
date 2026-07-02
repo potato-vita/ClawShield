@@ -20,5 +20,8 @@ export interface DecisionRow {
   modified_params: Record<string, unknown> | null;
   approval: Record<string, unknown> | null;
   fallback_used: boolean;
+  engine: "method" | "legacy" | "fallback" | null;
+  engine_version: string | null;
+  method_evaluation_id: string | null;
   created_at: Date;
 }

@@ -9,7 +9,15 @@ class AuditEventStream {
     return () => this.clients.delete(client);
   }
 
-  publish(event: "audit_event" | "trace_event", data: Record<string, unknown>): void {
+  publish(
+    event:
+      | "audit_event"
+      | "trace_event"
+      | "method_evaluation_queued"
+      | "method_evaluation_completed"
+      | "method_evaluation_failed",
+    data: Record<string, unknown>,
+  ): void {
     const payload = [
       `id: ${randomUUID()}`,
       `event: ${event}`,

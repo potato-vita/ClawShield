@@ -5,6 +5,8 @@ import type { MemoryQueue } from "../queue/memoryQueue.js";
 import type { PluginConfig } from "../types/config.js";
 import type { TraceEvent } from "../types/event.js";
 import type { HookRegistrar } from "./on.js";
+import type { RunContextRegistry } from "../runtime/runContextRegistry.js";
+import type { ObservationClient } from "../client/observationClient.js";
 
 export interface RegisterToolHooksOptions {
   api: unknown;
@@ -12,6 +14,8 @@ export interface RegisterToolHooksOptions {
   queue: MemoryQueue<TraceEvent>;
   logger: Logger;
   auditClient: AuditClient;
+  runContextRegistry: RunContextRegistry;
+  observationClient: ObservationClient;
   on: HookRegistrar;
 }
 

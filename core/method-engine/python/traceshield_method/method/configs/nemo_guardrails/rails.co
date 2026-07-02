@@ -1,0 +1,8 @@
+define flow traceshield check tool input
+  $result = execute traceshield_check_tool_call
+  if $result.allowed == False
+    bot refuse unsafe tool call
+    stop
+
+define bot refuse unsafe tool call
+  "The requested tool call is blocked by TraceShield policy."

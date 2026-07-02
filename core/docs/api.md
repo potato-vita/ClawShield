@@ -155,7 +155,20 @@ Returns `{ "run_id": "...", "steps": [...] }` in evidence order.
 
 ### `GET /v1/runs/:runId/risk-graph`
 
-Returns `{ "run_id": "...", "nodes": [...], "edges": [...] }`. The graph is generated at query time and is not persisted.
+Returns `{ "run_id": "...", "graph_source": "method|legacy_linear", "method_evaluation_id": "...", "nodes": [...], "edges": [...] }`.
+The latest successful Method Engine graph is preferred. Runs created before Core v2 fall back to the compatible linear graph and explicitly report `graph_source=legacy_linear`.
+
+### Runtime Method Engine
+
+```http
+GET /v1/method/status
+GET /v1/method/evaluations
+GET /v1/method/evaluations/:id
+GET /v1/runs/:runId/method-graph
+GET /v1/runs/:runId/decision-diff
+```
+
+Method evaluations remain separate from formal `audit_decisions`. In shadow mode their suggestions never change execution. In enforce mode the audit response includes optional `engine` and `engine_version` metadata.
 
 ### `GET /v1/runs/:runId/conversation-summary`
 

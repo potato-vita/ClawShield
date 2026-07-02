@@ -13,6 +13,12 @@
     "db:check": "tsx src/db/check.ts",
     "seed:demo": "tsx scripts/seed_demo_data.ts",
     "smoke": "tsx scripts/smoke_test.ts"
+    ,"test": "vitest run"
+    ,"test:unit": "vitest run src/engine/__tests__"
+    ,"method:test": "npm --prefix method-engine exec -- .venv/bin/python -m pytest -q"
+    ,"method:health": "tsx scripts/method_health.ts"
+    ,"method:replay": "tsx scripts/method_replay.ts"
+    ,"method:report": "tsx scripts/method_report.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
@@ -24,6 +30,7 @@
     "@types/node": "^22.10.2",
     "@types/pg": "^8.11.10",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^1.6.1"
   }
 }

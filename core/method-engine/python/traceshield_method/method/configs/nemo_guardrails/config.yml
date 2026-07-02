@@ -1,0 +1,10 @@
+models: []
+
+rails:
+  tool_input:
+    flows:
+      - traceshield check tool input
+
+custom_data:
+  traceshield:
+    intent_context_key: intent_frame

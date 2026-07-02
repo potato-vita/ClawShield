@@ -13,6 +13,9 @@ const expectedTables = [
   "policies",
   "evidence_items",
   "evidence_steps",
+  "method_evaluations",
+  "method_violations",
+  "method_graph_snapshots",
 ] as const;
 
 const databaseUrl = process.env.TRACESHIELD_DATABASE_URL;

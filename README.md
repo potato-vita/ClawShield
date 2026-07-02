@@ -38,7 +38,9 @@ traceshield/
 
 ### core
 
-`core/` 是默认联调服务，提供 PostgreSQL 持久化、同步策略决策、异步事件提取、前端查询 API 和 SSE 实时流。完整接口见 [Core API](core/docs/api.md)。
+`core/` 是默认联调服务，提供 PostgreSQL 持久化、同步策略决策、异步事件提取、前端查询 API 和 SSE 实时流。Core v2 通过长期 Python JSONL Worker 运行论文方法核心，支持 `legacy`、`shadow`、`enforce` 三种模式，并保留故障时的旧策略回退。完整接口见 [Core API](core/docs/api.md)。
+
+方法核心和来源基线位于 `core/method-engine/`，Runtime Worker 不开放额外网络端口。
 
 ### mock-core
 

@@ -66,7 +66,7 @@ export async function registerQueryRoutes(app: FastifyInstance): Promise<void> {
     const result = await pool.query(
       `SELECT run_id, session_id, trace_id, started_at, last_seen_at,
               tool_call_count, blocked_count, warn_count, ask_count,
-              risk_level, final_decision
+              risk_level, final_decision, status, ended_at, end_reason
        FROM audit_runs
        WHERE session_id = $1
        ORDER BY last_seen_at DESC, started_at DESC`,
@@ -84,7 +84,8 @@ export async function registerQueryRoutes(app: FastifyInstance): Promise<void> {
     const result = await pool.query(
       `SELECT
          tc.tool_call_id, tc.request_id, tc.session_id, tc.run_id, tc.trace_id,
-         tc.tool_name, tc.tool_kind, tc.resource_hint, tc.risk_hint, tc.status, tc.started_at,
+         tc.tool_name, tc.tool_kind, tc.step_seq, tc.correlation_source,
+         tc.resource_hint, tc.risk_hint, tc.status, tc.started_at,
          latest.decision, latest.risk_level, latest.reason, latest.matched_rules,
          latest.created_at AS decided_at
        FROM tool_calls tc
@@ -122,7 +123,7 @@ export async function registerQueryRoutes(app: FastifyInstance): Promise<void> {
       `SELECT
          decision_id::text, request_id, tool_call_id, decision, risk_level, reason,
          matched_rules, policy_version, evidence_refs, modified_params, approval,
-         fallback_used, created_at
+         fallback_used, engine, engine_version, method_evaluation_id, created_at
        FROM audit_decisions
        WHERE tool_call_id = $1
        ORDER BY created_at DESC
@@ -197,7 +198,8 @@ async function getToolCall(toolCallId: string): Promise<Record<string, unknown> 
   const result = await pool.query(
     `SELECT
        tool_call_id, request_id, session_id, run_id, trace_id, tool_name, tool_kind,
-       param_summary, resource_hint, risk_hint, status, started_at, updated_at
+       step_seq, correlation_source, param_summary, resource_hint, risk_hint,
+       status, started_at, updated_at
      FROM tool_calls
      WHERE tool_call_id = $1`,
     [toolCallId],

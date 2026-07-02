@@ -2,6 +2,8 @@ import type { PoolClient } from "pg";
 import { config } from "../config.js";
 import { withTransaction } from "../db/pool.js";
 import type { TraceEvent, TraceEventType } from "../types/pluginContract.js";
+import { completeRun } from "./runLifecycleService.js";
+import { applyPendingObservationDetection } from "./observationDetectionService.js";
 
 const messageEventTypes = new Set<TraceEventType>([
   "message_received",
@@ -68,6 +70,9 @@ export async function ingestEvents(events: TraceEvent[]): Promise<EventIngestRes
       if (event.type === "after_tool_call") {
         await extractToolResult(client, event);
         toolResultExtracted += 1;
+      }
+      if (event.type === "agent_end") {
+        await completeRun(client, event.run_id, new Date(event.timestamp));
       }
     }
 
@@ -140,8 +145,9 @@ async function extractToolResult(client: PoolClient, event: TraceEvent): Promise
     await client.query(
       `INSERT INTO tool_calls (
          tool_call_id, session_id, run_id, trace_id, tool_name, tool_kind,
-         param_summary, resource_hint, risk_hint, status, started_at, updated_at
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, NULL, $8, 'unknown', $9, NOW())
+         step_seq, correlation_source, param_summary, resource_hint, risk_hint,
+         status, started_at, updated_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, NULL, $10, 'unknown', $11, NOW())
        ON CONFLICT (tool_call_id) DO NOTHING`,
       [
         toolCallId,
@@ -150,6 +156,8 @@ async function extractToolResult(client: PoolClient, event: TraceEvent): Promise
         event.trace_id,
         readString(payload.tool_name) ?? "unknown",
         readString(payload.tool_kind) ?? "unknown",
+        readPositiveInteger(payload.step_seq),
+        readString(payload.correlation_source),
         JSON.stringify(asRecord(payload.param_summary)),
         readString(payload.risk_hint),
         new Date(event.timestamp),
@@ -176,6 +184,7 @@ async function extractToolResult(client: PoolClient, event: TraceEvent): Promise
       new Date(event.timestamp),
     ],
   );
+  await applyPendingObservationDetection(client, toolCallId);
 
   if (!placeholder) {
     await client.query(
@@ -193,6 +202,10 @@ function readString(value: unknown): string | null {
 
 function readNonNegativeInteger(value: unknown): number | null {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
+}
+
+function readPositiveInteger(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
 }
 
 function previewValue(value: unknown): string | null {

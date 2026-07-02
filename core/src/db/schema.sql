@@ -20,6 +20,9 @@ CREATE TABLE IF NOT EXISTS audit_runs (
   ask_count INTEGER NOT NULL DEFAULT 0 CHECK (ask_count >= 0),
   risk_level TEXT NOT NULL DEFAULT 'low' CHECK (risk_level IN ('low', 'medium', 'high', 'critical')),
   final_decision TEXT NOT NULL DEFAULT 'ALLOW' CHECK (final_decision IN ('ALLOW', 'WARN', 'ASK', 'BLOCK')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'failed', 'timed_out', 'abandoned')),
+  ended_at TIMESTAMPTZ,
+  end_reason TEXT,
   CHECK (last_seen_at >= started_at)
 );
 
@@ -68,6 +71,8 @@ CREATE TABLE IF NOT EXISTS tool_calls (
   trace_id TEXT NOT NULL,
   tool_name TEXT NOT NULL,
   tool_kind TEXT NOT NULL,
+  step_seq INTEGER CHECK (step_seq IS NULL OR step_seq > 0),
+  correlation_source TEXT,
   param_summary JSONB NOT NULL DEFAULT '{}'::JSONB,
   resource_hint TEXT,
   risk_hint TEXT,
@@ -104,6 +109,9 @@ CREATE TABLE IF NOT EXISTS audit_decisions (
   modified_params JSONB,
   approval JSONB,
   fallback_used BOOLEAN NOT NULL DEFAULT FALSE,
+  engine TEXT,
+  engine_version TEXT,
+  method_evaluation_id UUID,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

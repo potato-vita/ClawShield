@@ -11,6 +11,8 @@ export interface HookContext {
   workspace_root?: string;
   user_goal?: string;
   recent_message_hashes?: string[];
+  step_seq?: number;
+  correlation_source?: string;
 }
 
 export interface RawMessageHookInput extends HookContext {

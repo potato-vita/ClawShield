@@ -4,7 +4,9 @@ import { pool, withTransaction } from "../db/pool.js";
 import type { DecisionRow } from "../types/db.js";
 import type { AuditApproval, AuditDecision, AuditRequest } from "../types/pluginContract.js";
 import { createDecisionEvidence } from "./evidenceService.js";
-import { evaluatePolicy } from "./policyEngine.js";
+import { methodShadowService } from "./methodShadowService.js";
+import { orchestrateRuntimeAudit } from "../engine/runtimeAuditOrchestrator.js";
+import { config as coreConfig } from "../config.js";
 
 export async function auditToolCall(request: AuditRequest): Promise<AuditDecision> {
   const existing = await pool.query<DecisionRow>(
@@ -16,15 +18,18 @@ export async function auditToolCall(request: AuditRequest): Promise<AuditDecisio
     return mapDecisionRow(existingRow);
   }
 
-  const policyDecision = evaluatePolicy(request);
+  const outcome = await orchestrateRuntimeAudit(request);
+  const policyDecision = outcome.decision;
 
-  return withTransaction(async (client) => {
+  const decision = await withTransaction(async (client) => {
     await upsertSessionAndRun(client, request);
     await client.query(
       `INSERT INTO tool_calls (
          tool_call_id, request_id, session_id, run_id, trace_id, tool_name, tool_kind,
-         param_summary, resource_hint, risk_hint, raw_params, status, started_at, updated_at
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11::jsonb, 'pending', NOW(), NOW())
+         step_seq, correlation_source, param_summary, resource_hint, risk_hint, raw_params,
+         status, started_at, updated_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $13::jsonb,
+                 'pending', NOW(), NOW())
        ON CONFLICT (tool_call_id) DO UPDATE SET
          request_id = COALESCE(tool_calls.request_id, EXCLUDED.request_id),
          session_id = EXCLUDED.session_id,
@@ -32,6 +37,8 @@ export async function auditToolCall(request: AuditRequest): Promise<AuditDecisio
          trace_id = EXCLUDED.trace_id,
          tool_name = EXCLUDED.tool_name,
          tool_kind = EXCLUDED.tool_kind,
+         step_seq = COALESCE(tool_calls.step_seq, EXCLUDED.step_seq),
+         correlation_source = COALESCE(EXCLUDED.correlation_source, tool_calls.correlation_source),
          param_summary = EXCLUDED.param_summary,
          resource_hint = EXCLUDED.resource_hint,
          risk_hint = EXCLUDED.risk_hint,
@@ -45,6 +52,8 @@ export async function auditToolCall(request: AuditRequest): Promise<AuditDecisio
         request.trace_id,
         request.tool_name,
         request.tool_kind,
+        request.step_seq ?? null,
+        request.correlation_source ?? null,
         JSON.stringify(request.param_summary),
         request.resource_hint ?? null,
         request.risk_hint ?? null,
@@ -55,8 +64,8 @@ export async function auditToolCall(request: AuditRequest): Promise<AuditDecisio
     const decisionResult = await client.query<{ decision_id: string }>(
       `INSERT INTO audit_decisions (
          request_id, tool_call_id, decision, risk_level, reason, matched_rules,
-         policy_version, modified_params, approval, fallback_used
-       ) VALUES ($1, $2, $3, $4, $5, $6::text[], 'v1', NULL, $7::jsonb, FALSE)
+         policy_version, modified_params, approval, fallback_used, engine, engine_version
+       ) VALUES ($1, $2, $3, $4, $5, $6::text[], 'v1', NULL, $7::jsonb, FALSE, $8, $9)
        RETURNING decision_id::text`,
       [
         request.request_id,
@@ -66,6 +75,8 @@ export async function auditToolCall(request: AuditRequest): Promise<AuditDecisio
         policyDecision.reason,
         policyDecision.matchedRules,
         policyDecision.approval ? JSON.stringify(policyDecision.approval) : null,
+        outcome.engine,
+        outcome.engineVersion,
       ],
     );
     const decisionId = decisionResult.rows[0]?.decision_id;
@@ -106,8 +117,25 @@ export async function auditToolCall(request: AuditRequest): Promise<AuditDecisio
       modified_params: null,
       approval: policyDecision.approval,
       fallback_used: false,
+      engine: outcome.engine,
+      engine_version: outcome.engineVersion,
     };
   });
+  if (coreConfig.engineMode === "shadow") {
+    methodShadowService.enqueue({ request, legacyDecision: decision });
+  } else if (coreConfig.engineMode === "enforce" && outcome.methodResult) {
+    methodShadowService.persistEnforcementResult(
+      request,
+      {
+        decision: outcome.legacyDecision.decision,
+        risk_level: outcome.legacyDecision.riskLevel,
+        reason: outcome.legacyDecision.reason,
+        matched_rules: outcome.legacyDecision.matchedRules,
+      },
+      outcome.methodResult,
+    );
+  }
+  return decision;
 }
 
 async function upsertSessionAndRun(client: PoolClient, request: AuditRequest): Promise<void> {
@@ -171,5 +199,8 @@ function mapDecisionRow(row: DecisionRow): AuditDecision {
     modified_params: row.modified_params,
     approval: row.approval as AuditApproval | null,
     fallback_used: row.fallback_used,
+    ...(row.engine ? { engine: row.engine } : {}),
+    ...(row.engine_version ? { engine_version: row.engine_version } : {}),
+    ...(row.method_evaluation_id ? { method_evaluation_id: row.method_evaluation_id } : {}),
   };
 }

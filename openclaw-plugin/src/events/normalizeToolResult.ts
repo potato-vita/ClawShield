@@ -31,12 +31,16 @@ export function normalizeToolResult(
     mode: "async",
     payload: {
       tool_call_id: input.tool_call_id,
+      step_seq: input.step_seq,
+      correlation_source: input.correlation_source,
       tool_name: toolName,
       tool_kind: toolKind,
       param_summary: summarizeParams(params),
       result_preview: resultPreview,
       result_hash: shortHash(input.result ?? ""),
-      result_summary: summarizeValue(input.result),
+      result_summary: summarizeValue(
+        typeof input.result === "string" ? redactText(input.result) : redactObject(input.result),
+      ),
       error: redactObject(input.error ?? null),
       duration_ms: input.duration_ms,
       risk_hint: inferRiskHint(toolKind, params),

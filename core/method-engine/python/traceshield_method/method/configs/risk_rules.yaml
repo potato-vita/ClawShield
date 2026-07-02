@@ -1,0 +1,34 @@
+chain_rules:
+  sensitive_read_then_external_send:
+    enabled: true
+    first_flags:
+      - sensitive_resource_read
+    second_actions:
+      - network_post
+      - external_send
+    violation_type: chain_semantic_drift
+    reason: "检测到敏感资源读取后外联发送。"
+
+  prompt_injection_then_dangerous_action:
+    enabled: true
+    first_flags:
+      - untrusted_observation_contains_instruction
+    second_actions:
+      - network_post
+      - shell_exec
+      - delete_file
+      - web_submit
+    violation_type: prompt_injection_induced_drift
+    reason: "工具返回内容包含疑似注入指令，后续执行了高风险动作。"
+
+  read_then_delete_logs:
+    enabled: true
+    first_actions:
+      - read_file
+    second_resource_keywords:
+      - audit_logs
+      - logs
+    second_actions:
+      - delete_file
+    violation_type: chain_semantic_drift
+    reason: "执行链出现读取后删除日志的异常行为。"

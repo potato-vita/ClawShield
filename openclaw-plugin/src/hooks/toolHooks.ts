@@ -13,6 +13,8 @@ import type {
 } from "../types/hook.js";
 import type { MemoryQueue } from "../queue/memoryQueue.js";
 import { createId } from "../utils/id.js";
+import type { RunContextRegistry } from "../runtime/runContextRegistry.js";
+import type { ObservationClient } from "../client/observationClient.js";
 
 export interface RegisterToolHooksOptions {
   api: unknown;
@@ -20,6 +22,8 @@ export interface RegisterToolHooksOptions {
   config: PluginConfig;
   logger: Logger;
   auditClient: AuditClient;
+  runContextRegistry: RunContextRegistry;
+  observationClient: ObservationClient;
   on: (
     api: unknown,
     name: string,
@@ -33,13 +37,14 @@ export interface RegisterToolHooksOptions {
  * Core 不可用时自动切到本地降级策略。
  */
 export function registerToolHooks(options: RegisterToolHooksOptions): void {
-  const { api, queue, config, logger, auditClient, on } = options;
+  const { api, queue, config, logger, auditClient, runContextRegistry, observationClient, on } = options;
 
   on(
     api,
     "before_tool_call",
     async (event: unknown, ctx: Record<string, unknown>) => {
       const rawInput = toRawToolCallInput(event, ctx);
+      Object.assign(rawInput, runContextRegistry.beginToolCall(rawInput));
       queue.enqueue(normalizeToolCall(rawInput, config));
       const auditRequest = buildAuditRequest(rawInput);
 
@@ -85,7 +90,28 @@ export function registerToolHooks(options: RegisterToolHooksOptions): void {
     api,
     "after_tool_call",
     (event: unknown, ctx: Record<string, unknown>) => {
-      queue.enqueue(normalizeToolResult(toRawToolResultInput(event, ctx), config));
+      const rawInput = toRawToolResultInput(event, ctx);
+      Object.assign(rawInput, runContextRegistry.completeToolCall(rawInput));
+      const normalized = normalizeToolResult(rawInput, config);
+      queue.enqueue(normalized);
+      if (rawInput.result !== undefined) {
+        void observationClient
+          .detect({
+            event_id: normalized.event_id,
+            session_id: normalized.session_id,
+            run_id: normalized.run_id,
+            trace_id: normalized.trace_id,
+            tool_call_id: rawInput.tool_call_id,
+            step_seq: rawInput.step_seq,
+            observation: rawInput.result,
+            observation_hash: normalized.payload.result_hash,
+          })
+          .catch((error: unknown) =>
+            logger.warn("TraceShield transient observation detection failed", {
+              reason: error instanceof Error ? error.message : String(error),
+            }),
+          );
+      }
     },
     { priority: 80, timeoutMs: 2_000 },
   );

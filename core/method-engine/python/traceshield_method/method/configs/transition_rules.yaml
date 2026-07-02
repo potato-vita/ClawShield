@@ -1,0 +1,191 @@
+transitions:
+  start:
+    - list_files
+    - read_file
+    - load_database
+    - sql_query
+    - calculate
+    - calendar
+    - read_calendar
+    - read_email
+    - read_contacts
+    - web_search
+    - web_click
+
+  list_files:
+    - list_files
+    - read_file
+    - write_file
+    - delete_file
+    - external_send
+    - summarize_text
+    - final_answer
+
+  read_file:
+    - list_files
+    - read_file
+    - summarize_text
+    - write_file
+    - delete_file
+    - external_send
+    - final_answer
+
+  write_file:
+    - list_files
+    - read_file
+    - write_file
+    - delete_file
+    - external_send
+    - send_email
+    - final_answer
+
+  delete_file:
+    - list_files
+    - read_file
+    - summarize_text
+    - final_answer
+
+  external_send:
+    - external_send
+    - list_files
+    - read_file
+    - read_email
+    - read_calendar
+    - final_answer
+
+  summarize_text:
+    - summarize_text
+    - calculate
+    - final_answer
+    - write_file
+    - external_send
+    - network_post
+    - send_email
+    - web_submit
+
+  load_database:
+    - filter_database
+    - read_database_field
+    - sql_query
+    - calculate
+    - calendar
+
+  filter_database:
+    - filter_database
+    - read_database_field
+    - aggregate
+    - calculate
+    - calendar
+    - final_answer
+
+  read_database_field:
+    - filter_database
+    - read_database_field
+    - aggregate
+    - calculate
+    - calendar
+    - final_answer
+
+  sql_query:
+    - calculate
+    - calendar
+    - final_answer
+
+  calculate:
+    - load_database
+    - filter_database
+    - read_database_field
+    - sql_query
+    - summarize_text
+    - calculate
+    - calendar
+    - final_answer
+
+  calendar:
+    - load_database
+    - filter_database
+    - read_database_field
+    - sql_query
+    - calculate
+    - calendar
+    - read_calendar
+    - final_answer
+
+  read_calendar:
+    - read_calendar
+    - summarize_text
+    - create_calendar_event
+    - modify_calendar_event
+    - read_email
+    - read_contacts
+    - send_email
+    - final_answer
+
+  create_calendar_event:
+    - read_calendar
+    - read_email
+    - final_answer
+
+  modify_calendar_event:
+    - read_calendar
+    - read_email
+    - final_answer
+
+  read_email:
+    - read_email
+    - read_contacts
+    - summarize_text
+    - send_email
+    - delete_email
+    - read_file
+    - write_file
+    - external_send
+    - final_answer
+
+  send_email:
+    - read_email
+    - delete_email
+    - final_answer
+
+  delete_email:
+    - read_email
+    - final_answer
+
+  read_contacts:
+    - read_email
+    - send_email
+    - read_calendar
+    - final_answer
+
+  read_financial_data:
+    - read_financial_data
+    - read_user_data
+    - summarize_text
+    - external_send
+    - modify_financial_transaction
+    - final_answer
+
+  read_user_data:
+    - read_financial_data
+    - external_send
+    - modify_financial_transaction
+    - write_user_data
+    - modify_credentials
+    - final_answer
+
+  modify_financial_transaction:
+    - read_financial_data
+    - modify_financial_transaction
+    - final_answer
+
+  web_search:
+    - web_click
+    - final_answer
+
+  web_click:
+    - web_click
+    - web_submit
+    - final_answer
+
+  web_submit:
+    - final_answer

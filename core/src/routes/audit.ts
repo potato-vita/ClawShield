@@ -12,6 +12,9 @@ const auditRequestSchema = z.object({
   run_id: identifier,
   trace_id: identifier,
   tool_call_id: identifier,
+  step_seq: z.number().int().positive().optional(),
+  semantic_schema_version: z.literal("v1").optional(),
+  correlation_source: z.string().max(100).optional(),
   tool_name: identifier,
   tool_kind: identifier,
   raw_params: z.record(z.unknown()),
@@ -43,6 +46,13 @@ export async function registerAuditRoutes(app: FastifyInstance): Promise<void> {
       run_id: data.run_id,
       trace_id: data.trace_id,
       tool_call_id: data.tool_call_id,
+      ...(data.step_seq !== undefined ? { step_seq: data.step_seq } : {}),
+      ...(data.semantic_schema_version !== undefined
+        ? { semantic_schema_version: data.semantic_schema_version }
+        : {}),
+      ...(data.correlation_source !== undefined
+        ? { correlation_source: data.correlation_source }
+        : {}),
       tool_name: data.tool_name,
       tool_kind: data.tool_kind,
       raw_params: data.raw_params,
@@ -72,6 +82,8 @@ export async function registerAuditRoutes(app: FastifyInstance): Promise<void> {
       risk_level: decision.risk_level,
       reason: decision.reason,
       matched_rules: decision.matched_rules,
+      engine: decision.engine ?? null,
+      engine_version: decision.engine_version ?? null,
     });
     return decision;
   });

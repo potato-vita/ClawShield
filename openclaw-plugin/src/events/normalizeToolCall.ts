@@ -39,6 +39,8 @@ export function normalizeToolCall(input: RawToolCallHookInput, config: PluginCon
     mode: "async",
     payload: {
       tool_call_id: input.tool_call_id ?? createId("tool"),
+      step_seq: input.step_seq,
+      correlation_source: input.correlation_source,
       tool_name: toolName,
       tool_kind: toolKind,
       param_summary: summarizeParams(params),
@@ -63,6 +65,9 @@ export function buildAuditRequest(input: RawToolCallHookInput): AuditRequest {
     run_id: context.run_id,
     trace_id: context.trace_id,
     tool_call_id: input.tool_call_id ?? createId("tool"),
+    ...(input.step_seq !== undefined ? { step_seq: input.step_seq } : {}),
+    semantic_schema_version: "v1",
+    ...(input.correlation_source ? { correlation_source: input.correlation_source } : {}),
     tool_name: toolName,
     tool_kind: toolKind,
     raw_params: params,

@@ -3,6 +3,7 @@ import type { PluginConfig } from "../types/config.js";
 import type { TraceEvent, TraceEventType } from "../types/event.js";
 import type { RawMessageHookInput } from "../types/hook.js";
 import type { MemoryQueue } from "../queue/memoryQueue.js";
+import type { RunContextRegistry } from "../runtime/runContextRegistry.js";
 
 const MESSAGE_EVENT_TYPES: Array<
   Extract<
@@ -15,6 +16,7 @@ export interface RegisterMessageHooksOptions {
   api: unknown;
   queue: MemoryQueue<TraceEvent>;
   config: PluginConfig;
+  runContextRegistry: RunContextRegistry;
   on: (
     api: unknown,
     name: string,
@@ -28,14 +30,17 @@ export interface RegisterMessageHooksOptions {
  * 所有事件进入内存队列，不做阻断。
  */
 export function registerMessageHooks(options: RegisterMessageHooksOptions): void {
-  const { api, queue, config, on } = options;
+  const { api, queue, config, runContextRegistry, on } = options;
 
   for (const hookName of MESSAGE_EVENT_TYPES) {
     on(
       api,
       hookName,
       (event: unknown, ctx: Record<string, unknown>) => {
-        queue.enqueue(normalizeMessage(hookName, toRawMessageInput(event, ctx), config));
+        const rawInput = toRawMessageInput(event, ctx);
+        Object.assign(rawInput, runContextRegistry.resolveRun(rawInput));
+        queue.enqueue(normalizeMessage(hookName, rawInput, config));
+        if (hookName === "agent_end") runContextRegistry.endRun(rawInput);
       },
       { priority: 80, timeoutMs: 2_000 },
     );

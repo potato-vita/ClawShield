@@ -8,6 +8,8 @@ import { registerEventRoutes } from "./routes/events.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerQueryRoutes } from "./routes/queries.js";
 import { registerStreamRoutes } from "./routes/stream.js";
+import { registerMethodRoutes } from "./routes/method.js";
+import { methodShadowService } from "./services/methodShadowService.js";
 
 export function buildServer(): FastifyInstance {
   const app = Fastify({ logger: true });
@@ -29,6 +31,7 @@ export function buildServer(): FastifyInstance {
   app.register(registerEventRoutes);
   app.register(registerQueryRoutes);
   app.register(registerStreamRoutes);
+  app.register(registerMethodRoutes);
 
   app.setNotFoundHandler(async (_request, reply) => {
     return reply.code(404).send({ error: "not_found" });
@@ -42,12 +45,16 @@ export function buildServer(): FastifyInstance {
     });
   });
 
-  app.addHook("onClose", async () => closePool());
+  app.addHook("onClose", async () => {
+    await methodShadowService.stop();
+    await closePool();
+  });
   return app;
 }
 
 async function start(): Promise<void> {
   const app = buildServer();
+  await methodShadowService.start();
   await app.listen({ host: "127.0.0.1", port: config.port });
 }
 

@@ -57,6 +57,9 @@ export interface AuditRequest {
   trace_id: string;
   /** OpenClaw 工具调用 ID。 */
   tool_call_id: string;
+  step_seq?: number;
+  semantic_schema_version?: "v1";
+  correlation_source?: string;
   /** 工具名称，例如 shell、file_read、http_request。 */
   tool_name: string;
   /** 工具类别，用于粗粒度风险识别，例如 shell_exec、file_read。 */

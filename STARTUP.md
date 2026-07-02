@@ -15,6 +15,7 @@
 | --- | --- | --- | --- |
 | PostgreSQL 16 | Core 的持久化数据库 | `5432` | docker compose **或** apt 本地安装 |
 | TraceShield Core | Fastify 审计服务（同步决策 + 异步留痕 + 查询/SSE） | `8787` | `traceshield-core.service` |
+| Runtime Method Worker | Core 管理的 Python JSONL 方法引擎（无网络端口） | — | 由 Core 自动管理 |
 | TraceShield Web | Runtime Audit 实时控制台 | `5173` | `traceshield-web.service` |
 | TraceShield 插件 | OpenClaw 运行时安全门 | — | 已被 OpenClaw 加载（`openclaw-plugin/dist/`） |
 | OpenClaw Gateway | OpenClaw WebSocket 网关，加载并驱动插件 | `18789` | `openclaw gateway` |
@@ -156,6 +157,7 @@ npm run dev
 
 ```bash
 curl -s http://127.0.0.1:8787/v1/health || openclaw-plugin 的 demo:core（见步骤 4）
+curl -s http://127.0.0.1:8787/v1/method/status
 ```
 
 > 生产模式可用 `npm run build && npm start`。

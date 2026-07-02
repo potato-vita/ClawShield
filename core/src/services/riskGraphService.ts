@@ -26,6 +26,8 @@ export class RunNotFoundError extends Error {}
 
 export async function buildRiskGraph(runId: string): Promise<{
   run_id: string;
+  graph_source: "method" | "legacy_linear";
+  method_evaluation_id?: string;
   nodes: Array<Record<string, unknown>>;
   edges: Array<Record<string, unknown>>;
 }> {
@@ -35,6 +37,30 @@ export async function buildRiskGraph(runId: string): Promise<{
   );
   if (runResult.rowCount === 0) {
     throw new RunNotFoundError(`Run ${runId} was not found`);
+  }
+
+  const methodGraph = await pool.query<{
+    method_evaluation_id: string;
+    nodes: Array<Record<string, unknown>>;
+    edges: Array<Record<string, unknown>>;
+  }>(
+    `SELECT me.method_evaluation_id::text, mgs.nodes, mgs.edges
+       FROM method_evaluations me
+       JOIN method_graph_snapshots mgs USING (method_evaluation_id)
+      WHERE me.run_id=$1 AND me.status='ok'
+      ORDER BY me.step_seq DESC NULLS LAST, me.evaluation_revision DESC, me.completed_at DESC
+      LIMIT 1`,
+    [runId],
+  );
+  const snapshot = methodGraph.rows[0];
+  if (snapshot) {
+    return {
+      run_id: runId,
+      graph_source: "method",
+      method_evaluation_id: snapshot.method_evaluation_id,
+      nodes: snapshot.nodes,
+      edges: snapshot.edges,
+    };
   }
 
   const [toolsResult, evidenceResult] = await Promise.all([
@@ -110,5 +136,5 @@ export async function buildRiskGraph(runId: string): Promise<{
     previousNodeId = nodeId;
   }
 
-  return { run_id: runId, nodes, edges };
+  return { run_id: runId, graph_source: "legacy_linear", nodes, edges };
 }
