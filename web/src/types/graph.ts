@@ -8,6 +8,7 @@ export interface GraphNode {
   label: string;
   detail: string;
   risk: RiskLevel;
+  stepSeq?: number;
   decision?: Decision;
   toolCallId?: string;
   evidenceStepId?: string;

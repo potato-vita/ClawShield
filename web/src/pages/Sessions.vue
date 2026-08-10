@@ -17,21 +17,21 @@ async function openSession(session:AuditSession){await store.selectSession(sessi
 </script>
 
 <template>
-  <ProductPageLayout eyebrow="Audit records" title="Sessions" description="Browse conversations and audited runs independently from the live Runtime workspace.">
-    <template #actions><div class="live-state"><i :class="{online:store.streamState==='connected'}"/>{{store.streamState==='connected'?'Live updates':'Realtime offline'}}</div></template>
+  <ProductPageLayout eyebrow="审计记录" title="会话" description="独立浏览对话与已审计运行，并可随时进入实时审计工作台。">
+    <template #actions><div class="live-state"><i :class="{online:store.streamState==='connected'||store.streamState==='polling'}"/>{{store.streamState==='connected'?'实时更新':store.streamState==='polling'?'定时更新':'实时流离线'}}</div></template>
     <section class="session-metrics">
-      <article><MessageSquareText :size="18"/><span><small>All sessions</small><strong>{{store.sessions.length}}</strong></span></article>
-      <article><ShieldAlert :size="18"/><span><small>High risk</small><strong>{{riskSessions}}</strong></span></article>
-      <article><Wrench :size="18"/><span><small>Tool calls</small><strong>{{store.toolCalls.length}}</strong></span></article>
-      <article><MessageSquareText :size="18"/><span><small>Conversation only</small><strong>{{conversationOnly}}</strong></span></article>
+      <article><MessageSquareText :size="18"/><span><small>全部会话</small><strong>{{store.sessions.length}}</strong></span></article>
+      <article><ShieldAlert :size="18"/><span><small>高风险</small><strong>{{riskSessions}}</strong></span></article>
+      <article><Wrench :size="18"/><span><small>工具调用</small><strong>{{store.toolCalls.length}}</strong></span></article>
+      <article><MessageSquareText :size="18"/><span><small>纯对话</small><strong>{{conversationOnly}}</strong></span></article>
     </section>
     <section class="session-toolbar">
-      <label class="search"><Search :size="15"/><input v-model="query" placeholder="Search session ID or activity"/></label>
-      <label class="risk-filter"><Filter :size="14"/><select v-model="risk"><option value="all">All risk levels</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label>
-      <span>{{visible.length}} records</span>
+      <label class="search"><Search :size="15"/><input v-model="query" placeholder="搜索会话 ID 或活动"/></label>
+      <label class="risk-filter"><Filter :size="14"/><select v-model="risk"><option value="all">全部风险等级</option><option value="critical">严重</option><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></label>
+      <span>{{visible.length}} 条记录</span>
     </section>
     <section class="session-table">
-      <header><span>Session</span><span>Latest activity</span><span>Risk</span><span>Runs</span><span>Updated</span><span/></header>
+      <header><span>会话</span><span>最近活动</span><span>风险</span><span>运行次数</span><span>更新时间</span><span/></header>
       <button v-for="session in visible" :key="session.id" @click="openSession(session)">
         <span class="identity"><i :class="`risk-${session.risk}`"/><strong>{{session.title}}</strong><code>{{session.id}}</code></span>
         <span class="activity">{{session.subtitle}}</span>
@@ -40,7 +40,7 @@ async function openSession(session:AuditSession){await store.selectSession(sessi
         <time>{{session.time}}</time>
         <ArrowRight :size="15"/>
       </button>
-      <div v-if="!visible.length" class="empty"><strong>No sessions found</strong><span>Try a different search or risk filter.</span></div>
+      <div v-if="!visible.length" class="empty"><strong>没有找到会话</strong><span>请尝试其他搜索词或风险筛选条件。</span></div>
     </section>
   </ProductPageLayout>
 </template>

@@ -1,3 +1,3 @@
 <script setup lang="ts">import {computed} from "vue";import type {GraphNode} from "@/types/graph";const props=defineProps<{node?:GraphNode}>();const explanation=computed(()=>props.node?.risk==="critical"?"本次调用被阻断，因为 Agent 在读取敏感文件后，尝试将处理结果发送到未信任外部域名。风险链路为：read_file → process_data → external_send。建议保持阻断，并检查原始任务意图。":props.node?`当前选中 ${props.node.label}。TraceShield 已记录其上下文与证据关联，风险级别为 ${props.node.risk}。建议结合完整路径判断是否需要收紧策略。`:"选择一个路径节点后，Assistant 将解释其风险与处置建议。");</script>
-<template><div class="assistant-copy"><span>Assistant explanation</span><h3>Why TraceShield intervened</h3><p>{{explanation}}</p></div></template>
+<template><div class="assistant-copy"><span>助手解释</span><h3>TraceShield 为什么介入</h3><p>{{explanation}}</p></div></template>
 <style scoped>.assistant-copy span{color:var(--trace-red);font-size:9px;font-weight:700;text-transform:uppercase}.assistant-copy h3{margin:9px 0;font-size:14px}.assistant-copy p{color:#6e7989;font-size:11px;line-height:1.75}</style>

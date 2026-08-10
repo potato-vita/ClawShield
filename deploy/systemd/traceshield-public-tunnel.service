@@ -1,0 +1,13 @@
+[Unit]
+Description=TraceShield temporary public HTTPS tunnel
+After=network-online.target traceshield-public-gateway.service
+Wants=network-online.target traceshield-public-gateway.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/cloudflared tunnel --url http://127.0.0.1:5180 --no-autoupdate --metrics 127.0.0.1:20241
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

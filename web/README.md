@@ -18,18 +18,19 @@ npm run dev
 `.env` 默认使用 mock：
 
 ```env
-VITE_TRACESHIELD_CORE_BASE_URL=http://127.0.0.1:8787
 VITE_USE_MOCK_DATA=true
 ```
 
 - `true`：完全使用前端 mock，无需 Core/PostgreSQL，适合答辩演示。
 - `false`：请求 Core。请求失败时页面保留 mock 数据并显示 fallback 错误，不会白屏。
 
+可选的 `VITE_TRACESHIELD_CORE_BASE_URL` 用于覆盖 Core 地址。未设置时，前端会使用当前浏览器主机名加端口 `8787`，因此通过局域网访问 Web 时会自动请求同一台虚拟机的 Core。
+
 更改 `.env` 后需重启 Vite。
 
 ## Core 接入
 
-当 Core 运行在 `127.0.0.1:8787` 时，将 `VITE_USE_MOCK_DATA` 设为 `false`。前端使用 dashboard、health、audit events、risk graph、evidence path 和 SSE 接口。会话与 run 列表由 audit events 派生，以兼容当前 Core 接口集。
+将 `VITE_USE_MOCK_DATA` 设为 `false` 后，前端使用 dashboard、health、audit sessions、audit events、risk graph、evidence path 和 SSE 接口。会话和 run 列表同时使用会话与事件接口。
 
 Core 未实现 policies REST 时，Policy Center 会保留布局并显示明确操作提示。
 

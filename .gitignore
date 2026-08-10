@@ -3,5 +3,12 @@ dist/
 .traceshield/
 *.log
 .env
+api-key
+assistant-eino/bin/
+TraceShield_Experiment-main/
+pic/
+tex/
+*.pdf
+PPT_*.md
 core/.env
 .pytest_cache/

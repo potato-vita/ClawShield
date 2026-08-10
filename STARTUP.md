@@ -1,5 +1,9 @@
 # TraceShield 启动指南
 
+> **当前操作入口**：请使用 [RUNBOOK.md](RUNBOOK.md)。它面向人和 Agent，已覆盖 PostgreSQL、Core、方法引擎、Web、插件、OpenClaw Gateway、局域网访问、验证和故障定位。
+>
+> 本文件保留早期部署记录以便追溯，不应用作当前启动依据；下文中的历史 IP、绑定地址、服务状态和首次安装步骤可能已经失效。
+
 本文件汇总在**本机**把 TraceShield 全套跑起来所需的全部命令，包括 PostgreSQL、持久化 Core、实时 Web 控制台、插件构建，以及 OpenClaw Gateway / Chat（直接登录，免交互）。
 
 > 阅读前提：所有 `cd` 路径都以仓库根目录 `traceshield/` 为基准。

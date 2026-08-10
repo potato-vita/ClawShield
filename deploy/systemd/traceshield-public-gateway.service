@@ -1,0 +1,19 @@
+[Unit]
+Description=TraceShield read-only public web gateway
+After=traceshield-core.service traceshield-web.service
+Wants=traceshield-core.service traceshield-web.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/claw/桌面/traceshield/web
+ExecStart=/usr/bin/env node scripts/publicGateway.mjs
+Restart=on-failure
+RestartSec=3
+Environment=NODE_ENV=production
+Environment=TRACESHIELD_PUBLIC_GATEWAY_HOST=127.0.0.1
+Environment=TRACESHIELD_PUBLIC_GATEWAY_PORT=5180
+Environment=TRACESHIELD_WEB_ORIGIN=http://127.0.0.1:5173
+Environment=TRACESHIELD_CORE_ORIGIN=http://127.0.0.1:8787
+
+[Install]
+WantedBy=default.target

@@ -4,6 +4,7 @@ export interface ToolCall {
   id: string;
   sessionId: string;
   runId: string;
+  stepSeq?: number;
   time: string;
   toolName: string;
   toolKind: "shell" | "filesystem" | "transform" | "network";

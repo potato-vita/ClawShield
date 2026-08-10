@@ -20,6 +20,8 @@ const environmentSchema = z.object({
   TRACESHIELD_METHOD_QUEUE_LIMIT: z.coerce.number().int().positive().default(256),
   TRACESHIELD_METHOD_PYTHON: z.string().default("./method-engine/.venv/bin/python"),
   TRACESHIELD_METHOD_WORKER: z.string().default("./method-engine/python/traceshield_method/worker.py"),
+  TRACESHIELD_ASSISTANT_BASE_URL: z.string().url().default("http://127.0.0.1:8790"),
+  TRACESHIELD_ASSISTANT_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
 });
 
 const environment = environmentSchema.parse(process.env);
@@ -38,6 +40,8 @@ export const config = {
   methodQueueLimit: environment.TRACESHIELD_METHOD_QUEUE_LIMIT,
   methodPython: environment.TRACESHIELD_METHOD_PYTHON,
   methodWorker: environment.TRACESHIELD_METHOD_WORKER,
+  assistantBaseUrl: environment.TRACESHIELD_ASSISTANT_BASE_URL,
+  assistantTimeoutMs: environment.TRACESHIELD_ASSISTANT_TIMEOUT_MS,
   version: "0.1.0",
 } as const;
 

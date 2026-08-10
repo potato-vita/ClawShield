@@ -1,8 +1,12 @@
 # TraceShield OpenClaw 插件
 
-TraceShield OpenClaw 插件是一个运行时安全门，用来在 OpenClaw 执行工具调用和事件采集时做同步审计、异步留痕、脱敏处理和本地降级。仓库现包含 PostgreSQL 支持的真实 Core 雏形；`mock-core` 仅保留用于旧的无数据库演示。
+> **当前文档入口**：先阅读 [项目介绍](PROJECT_OVERVIEW.md)，启动或恢复环境时严格遵循 [完整启动手册](RUNBOOK.md)。模块级 API、契约与方法资料见 [文档索引](doc/README.md)。
+>
+> 本文件保留早期概览和局部说明以便历史查阅；涉及启动、网络绑定、端口、测试或 OpenClaw 配置时，以 `RUNBOOK.md` 为准。
 
-当前状态：插件 MVP 已完成，已在本机真实 OpenClaw Gateway 上验证过危险命令阻断；后续真实环境的更多手工验证结果请继续记录到 [真实 OpenClaw 接入验证](doc/real-openclaw-integration.md)。
+TraceShield OpenClaw 插件是一个运行时安全门，用来在 OpenClaw 执行工具调用和事件采集时做同步审计、异步留痕、脱敏处理和本地降级。仓库现包含 PostgreSQL 支持的真实 Core，以及由 CloudWeGo Eino 和 DeepSeek 驱动的只读安全助手；`mock-core` 仅保留用于旧的无数据库演示。
+
+当前实现已包含真实 Core、PostgreSQL、方法引擎、Web 控制台、Eino Assistant 和 OpenClaw 插件链路。运行状态应以启动手册中的健康检查、Gateway 日志和自动化测试结果为准。
 
 ## 这套项目解决什么问题
 
@@ -12,14 +16,18 @@ TraceShield OpenClaw 插件是一个运行时安全门，用来在 OpenClaw 执�
 - 当 Core 不可用时，自动切换到保守的本地降级策略。
 - 对破坏性 shell 命令请求 OpenClaw 人工确认；无审批路由或超时时默认拒绝。
 - 提供 `traceshield_status` 工具，便于在 OpenClaw 中快速确认插件状态。
+- 在 Web 的 `/assistant` 页面以 SSE 流式调用 Eino + DeepSeek，对已脱敏的审计摘要做只读解释和调查辅助。
 
 ## 项目结构
 
 ```text
 traceshield/
+├─ assistant-eino/    # CloudWeGo Eino + DeepSeek 对话服务
 ├─ core/              # Fastify + PostgreSQL 审计服务
+├─ web/               # Vue 控制台与 /assistant 对话界面
 ├─ openclaw-plugin/   # TraceShield OpenClaw 插件本体
 ├─ mock-core/         # 仅用于旧演示的模拟服务
+├─ deploy/systemd/    # 本项目用户级 systemd 服务单元
 ├─ doc/               # 开发日志与阶段性记录
 ├─ docker-compose.yml # PostgreSQL 16
 └─ README.md
@@ -42,6 +50,12 @@ traceshield/
 
 方法核心和来源基线位于 `core/method-engine/`，Runtime Worker 不开放额外网络端口。
 
+### assistant-eino
+
+`assistant-eino/` 是 Web 安全助手的独立 Go 服务。它通过 CloudWeGo Eino 的 `ChatModel` 接口和 Eino OpenAI 扩展调用 DeepSeek 的 OpenAI 兼容接口，默认仅监听 `127.0.0.1:8790`。浏览器不直连该端口，而是通过 Core 的 `/v1/assistant/*` 代理访问。
+
+当前阶段只接入了流式对话，没有注册工具，也不改变 Core 的策略决策或执行结果。详细构建、启动和验证命令见 [完整启动手册](RUNBOOK.md)，服务自身的环境变量与接口见 [Assistant README](assistant-eino/README.md)。
+
 ### mock-core
 
 `mock-core/` 是一个无数据库的旧演示服务，仅支持：
@@ -62,6 +76,9 @@ flowchart LR
   P -->|async trace batch| C
   P -->|fallback policy| L[本地保守策略]
   P -->|sanitized payload| Q[内存队列 / 磁盘队列]
+  W[Web /assistant] -->|SSE via /v1/assistant/*| C
+  C -->|localhost:8790| A[CloudWeGo Eino Assistant]
+  A -->|OpenAI-compatible API| D[DeepSeek]
 ```
 
 ## 快速开始
@@ -78,9 +95,23 @@ npm run db:migrate
 npm run dev
 ```
 
-默认会监听 `http://127.0.0.1:8787`。你也可以通过 `MOCK_CORE_PORT` 改端口。
+Core 默认监听 `0.0.0.0:8787`；端口可通过 `TRACESHIELD_CORE_PORT` 配置。`MOCK_CORE_PORT` 仅用于旧的 `mock-core`。
 
-### 2. 构建插件
+### 2. 构建并启动 Eino Assistant
+
+将测试用 DeepSeek API key 放在仓库根目录的 `api-key` 文件后，在另一个以仓库根目录为工作目录的终端执行：
+
+```bash
+cd assistant-eino
+go test ./...
+mkdir -p bin
+go build -o bin/traceshield-assistant ./cmd/server
+TRACESHIELD_ASSISTANT_API_KEY_FILE="$PWD/../api-key" ./bin/traceshield-assistant
+```
+
+Assistant 默认监听 `127.0.0.1:8790`。日常运行推荐使用仓库提供的用户级 systemd 服务；完整安装、健康检查、停止和故障定位命令见 [完整启动手册](RUNBOOK.md)。
+
+### 3. 构建插件
 
 ```bash
 cd openclaw-plugin
@@ -90,7 +121,7 @@ npm run build
 
 构建产物会输出到 `dist/`。
 
-### 3. 让 OpenClaw 加载插件
+### 4. 让 OpenClaw 加载插件
 
 把 `openclaw.plugin.json` 的入口指向构建后的 `dist/index.js`，然后在 OpenClaw 环境里加载该插件。
 
@@ -103,7 +134,7 @@ npm run build
 - `before_prompt_build` 安全提示
 - `agentToolResultMiddleware` 可见阻断反馈
 
-### 4. 运行演示脚本
+### 5. 运行演示脚本
 
 ```bash
 cd openclaw-plugin
@@ -112,7 +143,7 @@ npm run demo:openclaw
 
 这个脚本会展示插件 ID、版本、Hook 注册情况、队列状态，以及不同工具调用的审计结果。
 
-注意：`demo:openclaw` 是模拟/本地链路演示，不等于真实 OpenClaw Gateway 加载验证。真实接入步骤和记录表见 [真实 OpenClaw 接入验证](doc/real-openclaw-integration.md)。
+注意：`demo:openclaw` 是模拟/本地链路演示，不等于真实 OpenClaw Gateway 加载验证。真实链路的启动、日志检查和健康验证见 [完整启动手册](RUNBOOK.md)。
 
 ## 配置
 
@@ -120,7 +151,19 @@ npm run demo:openclaw
 
 - `TRACESHIELD_DATABASE_URL`: PostgreSQL 连接串。
 - `TRACESHIELD_CORE_PORT`: Core 监听端口，默认 `8787`。
+- `TRACESHIELD_ASSISTANT_BASE_URL`: Eino Assistant 地址，默认 `http://127.0.0.1:8790`。
+- `TRACESHIELD_ASSISTANT_TIMEOUT_MS`: Core 等待 Assistant 流的超时，默认 `60000` 毫秒。
 - `TRACESHIELD_SAVE_RAW_PAYLOAD/PARAMS/RESULT`: raw 数据调试开关，默认均为 `false`。
+
+### assistant-eino
+
+- `TRACESHIELD_ASSISTANT_API_KEY_FILE`: DeepSeek API key 文件路径；仓库服务单元默认读取根目录 `api-key`。
+- `TRACESHIELD_ASSISTANT_BASE_URL`: 模型接口地址，默认 `https://api.deepseek.com`。
+- `TRACESHIELD_ASSISTANT_MODEL`: 模型名称，服务单元默认使用 `deepseek-v4-flash`。
+- `TRACESHIELD_ASSISTANT_HOST` / `TRACESHIELD_ASSISTANT_PORT`: 监听地址与端口，默认 `127.0.0.1:8790`。
+- `TRACESHIELD_ASSISTANT_THINKING_ENABLED`: 是否启用模型思考模式，演示环境默认关闭以缩短等待时间。
+
+完整限制项和优先级见 [`assistant-eino/.env.example`](assistant-eino/.env.example)。
 
 ### mock-core（旧演示）
 
@@ -218,6 +261,14 @@ npm run typecheck
 npm run dev
 ```
 
+在 `assistant-eino/` 下可运行：
+
+```bash
+go test ./...
+mkdir -p bin
+go build -o bin/traceshield-assistant ./cmd/server
+```
+
 项目文档记录的当前验证结果是：类型检查、测试和构建都已通过。
 
 ## 参考文档
@@ -226,8 +277,8 @@ npm run dev
 - [事件结构](openclaw-plugin/docs/event-schema.md)
 - [决策结构](openclaw-plugin/docs/decision-schema.md)
 - [演示脚本](openclaw-plugin/docs/demo-script.md)
-- [测试报告](openclaw-plugin/docs/plugin-test-report.md)
-- [真实 OpenClaw 接入验证](doc/real-openclaw-integration.md)
+- [项目文档索引](doc/README.md)
+- [Eino Assistant](assistant-eino/README.md)
 
 ## 适合继续做什么
 

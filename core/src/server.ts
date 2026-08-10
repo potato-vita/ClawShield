@@ -9,13 +9,12 @@ import { registerHealthRoutes } from "./routes/health.js";
 import { registerQueryRoutes } from "./routes/queries.js";
 import { registerStreamRoutes } from "./routes/stream.js";
 import { registerMethodRoutes } from "./routes/method.js";
+import { registerAssistantRoutes } from "./routes/assistant.js";
 import { methodShadowService } from "./services/methodShadowService.js";
 
 export function buildServer(): FastifyInstance {
   const app = Fastify({ logger: true });
 
-  // Core only binds to loopback, but the Web console uses a separate local port.
-  // Keep local HTTP/SSE usable without requiring a reverse proxy.
   app.addHook("onRequest", async (request, reply) => {
     reply.header("Access-Control-Allow-Origin", "*");
     reply.header("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
@@ -32,6 +31,7 @@ export function buildServer(): FastifyInstance {
   app.register(registerQueryRoutes);
   app.register(registerStreamRoutes);
   app.register(registerMethodRoutes);
+  app.register(registerAssistantRoutes);
 
   app.setNotFoundHandler(async (_request, reply) => {
     return reply.code(404).send({ error: "not_found" });
@@ -55,7 +55,7 @@ export function buildServer(): FastifyInstance {
 async function start(): Promise<void> {
   const app = buildServer();
   await methodShadowService.start();
-  await app.listen({ host: "127.0.0.1", port: config.port });
+  await app.listen({ host: "0.0.0.0", port: config.port });
 }
 
 const entrypoint = process.argv[1];

@@ -76,6 +76,7 @@ export async function registerAuditRoutes(app: FastifyInstance): Promise<void> {
       run_id: auditRequest.run_id,
       trace_id: auditRequest.trace_id,
       tool_call_id: auditRequest.tool_call_id,
+      step_seq: auditRequest.step_seq ?? null,
       tool_name: auditRequest.tool_name,
       tool_kind: auditRequest.tool_kind,
       decision: decision.decision,

@@ -1,6 +1,6 @@
 # TraceShield OpenClaw 插件数据契约
 
-本文档固定 TraceShield OpenClaw 插件与 Core / Mock Core 之间的 v1 通信契约。本阶段只实现插件侧数据契约，不实现 Core。
+本文档定义 TraceShield OpenClaw 插件与 Core / Mock Core 之间的 v1 通信契约。仓库中的真实 Core 已实现该契约；`mock-core` 只保留用于旧版演示。
 
 ## 职责边界
 

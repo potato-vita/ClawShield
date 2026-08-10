@@ -1,21 +1,28 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { Bell, ChevronDown, Radio, Search, X } from "lucide-vue-next";
 import { useRuntimeStore } from "@/stores/runtimeStore";
 const store=useRuntimeStore();const showStatus=ref(false);
+const pluginStatus=computed(()=>{
+  const value=store.status.pluginLastSeen;
+  if(value==="event stream pending")return "事件流待连接";
+  if(value==="never")return "暂无心跳";
+  return value.replace("seconds ago","秒前").replace("minutes ago","分钟前");
+});
+const streamLabel=computed(()=>store.streamState==="connected"?"已连接":store.streamState==="polling"?"轮询更新":store.streamState==="connecting"?"连接中":"离线");
 </script>
 
 <template>
   <header class="topbar">
     <div class="title-block"><strong>TraceShield</strong><span class="divider" /><span>实时审计控制台</span><small>Runtime Audit Console</small></div>
     <div class="status-strip">
-      <button class="status-item" @click="showStatus=true"><i class="status-dot" :class="store.status.coreOnline?'online':'offline'" /><span>Core {{store.dataSource==='mock'?'Preview':store.status.coreOnline?'Online':'Offline'}}</span></button>
-      <button class="status-item" @click="showStatus=true"><i class="status-dot" :class="store.status.databaseConnected?'online':'offline'" /><span>PostgreSQL {{store.status.databaseConnected?'Connected':'Offline'}}</span></button>
-      <button class="status-item" @click="showStatus=true"><Radio :size="13" /><span>Plugin · {{store.status.pluginLastSeen}}</span><ChevronDown :size="13" /></button>
-      <button class="status-item realtime" @click="showStatus=true"><i class="status-dot" :class="store.streamState==='connected'?'online':'offline'"/><span>Realtime {{store.streamState==='connected'?'Connected':'Offline'}}</span></button>
+      <button class="status-item" @click="showStatus=true"><i class="status-dot" :class="store.status.coreOnline?'online':'offline'" /><span>Core {{store.dataSource==='mock'?'预览':store.status.coreOnline?'在线':'离线'}}</span></button>
+      <button class="status-item" @click="showStatus=true"><i class="status-dot" :class="store.status.databaseConnected?'online':'offline'" /><span>PostgreSQL {{store.status.databaseConnected?'已连接':'离线'}}</span></button>
+      <button class="status-item" @click="showStatus=true"><Radio :size="13" /><span>插件 · {{pluginStatus}}</span><ChevronDown :size="13" /></button>
+      <button class="status-item realtime" @click="showStatus=true"><i class="status-dot" :class="store.streamState==='connected'||store.streamState==='polling'?'online':'offline'"/><span>实时流 {{streamLabel}}</span></button>
     </div>
-    <div class="top-actions"><button class="icon-button" aria-label="Search"><Search :size="17" /></button><button class="icon-button" aria-label="Notifications"><Bell :size="17" /><b /></button><div class="avatar">TS</div></div>
-    <div v-if="showStatus" class="status-backdrop" @click.self="showStatus=false"><section class="status-modal"><header><div><small>System telemetry</small><h2>Core status</h2></div><button @click="showStatus=false"><X :size="17"/></button></header><div class="health-hero"><i class="status-dot" :class="store.status.coreOnline?'online':'offline'"/><div><strong>{{store.status.coreOnline?'All primary services operational':'Core requires attention'}}</strong><span>Data source · {{store.dataSource}}</span></div></div><dl><div><dt>Core</dt><dd>{{store.status.coreOnline?'Online':'Offline'}}</dd></div><div><dt>Database</dt><dd>{{store.status.databaseConnected?'Connected':'Disconnected'}}</dd></div><div><dt>Realtime stream</dt><dd>{{store.streamState}}</dd></div><div><dt>OpenClaw plugin</dt><dd>{{store.status.pluginLastSeen}}</dd></div><div><dt>Events ingested</dt><dd>{{store.status.eventsIngested.toLocaleString()}}</dd></div><div><dt>Queue size</dt><dd>{{store.status.queueSize}}</dd></div><div><dt>Core version</dt><dd>{{store.status.coreVersion}}</dd></div><div><dt>Policy version</dt><dd>{{store.status.policyVersion}}</dd></div></dl><footer><router-link to="/core" @click="showStatus=false">Open system status</router-link></footer></section></div>
+    <div class="top-actions"><button class="icon-button" aria-label="搜索"><Search :size="17" /></button><button class="icon-button" aria-label="通知"><Bell :size="17" /><b /></button><div class="avatar">TS</div></div>
+    <div v-if="showStatus" class="status-backdrop" @click.self="showStatus=false"><section class="status-modal"><header><div><small>系统遥测</small><h2>Core 状态</h2></div><button aria-label="关闭" @click="showStatus=false"><X :size="17"/></button></header><div class="health-hero"><i class="status-dot" :class="store.status.coreOnline?'online':'offline'"/><div><strong>{{store.status.coreOnline?'主要服务运行正常':'Core 需要处理'}}</strong><span>数据源 · {{store.dataSource}}</span></div></div><dl><div><dt>Core</dt><dd>{{store.status.coreOnline?'在线':'离线'}}</dd></div><div><dt>数据库</dt><dd>{{store.status.databaseConnected?'已连接':'未连接'}}</dd></div><div><dt>实时事件流</dt><dd>{{streamLabel}}</dd></div><div><dt>OpenClaw 插件</dt><dd>{{pluginStatus}}</dd></div><div><dt>已接收事件</dt><dd>{{store.status.eventsIngested.toLocaleString()}}</dd></div><div><dt>队列长度</dt><dd>{{store.status.queueSize}}</dd></div><div><dt>Core 版本</dt><dd>{{store.status.coreVersion}}</dd></div><div><dt>策略版本</dt><dd>{{store.status.policyVersion}}</dd></div></dl><footer><router-link to="/core" @click="showStatus=false">打开系统状态页</router-link></footer></section></div>
   </header>
 </template>
 

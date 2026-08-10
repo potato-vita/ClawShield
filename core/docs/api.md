@@ -1,9 +1,9 @@
 # TraceShield Core API
 
-Base URL: `http://127.0.0.1:8787`
+Base URL: `http://<host>:8787`
 
 All non-SSE endpoints accept and return JSON. Timestamps in plugin events are Unix milliseconds; timestamps returned from PostgreSQL are ISO 8601 strings.
-Core binds to loopback and returns CORS headers so the local Web console on port 5173 can use HTTP and SSE directly.
+Core listens on all IPv4 interfaces and returns CORS headers so the Web console can use HTTP and SSE directly. Restrict network access with host firewall or a private network before exposing the service outside a trusted LAN.
 
 ## Health and dashboard
 
@@ -33,6 +33,63 @@ Returns real 24-hour aggregates:
   "policy_hits_24h": 12
 }
 ```
+
+## Security Assistant
+
+Core exposes the Eino assistant through same-origin endpoints. It forwards requests to
+`TRACESHIELD_ASSISTANT_BASE_URL` (default `http://127.0.0.1:8790`) and aborts requests after
+`TRACESHIELD_ASSISTANT_TIMEOUT_MS` (default `60000`). DeepSeek credentials remain in the Eino
+service and are never sent to Core or the Web console.
+
+### `GET /v1/assistant/health`
+
+Returns the validated, non-sensitive Eino service status:
+
+```json
+{
+  "ok": true,
+  "service": "traceshield-assistant-eino",
+  "framework": "cloudwego-eino",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "configured": true
+}
+```
+
+### `POST /v1/assistant/chat/stream`
+
+Request:
+
+```json
+{
+  "conversation_id": "conversation-1",
+  "message": "Explain why this tool call was blocked.",
+  "history": [
+    { "role": "user", "content": "Review run-1." },
+    { "role": "assistant", "content": "What should I focus on?" }
+  ],
+  "context": { "run_id": "run-1" }
+}
+```
+
+`conversation_id`, `history`, and `context` are optional. `history` accepts only `user` and
+`assistant` roles. The response content type is `text/event-stream`, with Eino events forwarded
+in order:
+
+```text
+event: start
+data: {"conversation_id":"conversation-1","model":"deepseek-v4-flash"}
+
+event: delta
+data: {"content":"The call was blocked because..."}
+
+event: done
+data: {"conversation_id":"conversation-1","finish_reason":"stop"}
+```
+
+The client may cancel generation by closing the response. Core then aborts the Eino request.
+Proxy failures use stable public error codes (`assistant_unavailable`, `assistant_timeout`,
+`assistant_rate_limited`, or an SSE `assistant_stream_error`) and do not return upstream error bodies.
 
 ## Synchronous audit
 

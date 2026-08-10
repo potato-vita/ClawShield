@@ -1,4 +1,10 @@
-export const coreBaseUrl=(import.meta.env.VITE_TRACESHIELD_CORE_BASE_URL||"http://127.0.0.1:8787").replace(/\/$/,"");
+const defaultCoreBaseUrl = window.location.protocol === "https:"
+  ? window.location.origin
+  : `http://${window.location.hostname}:8787`;
+
+export const coreBaseUrl = (
+  import.meta.env.VITE_TRACESHIELD_CORE_BASE_URL || defaultCoreBaseUrl
+).replace(/\/$/, "");
 export const useMockData=import.meta.env.VITE_USE_MOCK_DATA!=="false";
 
 export class ApiError extends Error {

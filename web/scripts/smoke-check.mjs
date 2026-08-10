@@ -4,9 +4,15 @@ import { resolve } from "node:path";
 const root=resolve(import.meta.dirname,"..");
 const checks=[
   ["dist/index.html","production build"],
+  ["src/pages/ExecutiveOverview.vue","executive overview page"],
   ["src/pages/RuntimeAudit.vue","runtime page"],
   ["src/pages/ToolCalls.vue","tool calls page"],
   ["src/pages/PolicyCenter.vue","policy center page"],
+  ["src/pages/RiskIntelligence.vue","risk intelligence page"],
+  ["src/pages/EvidenceVault.vue","evidence vault page"],
+  ["src/pages/ComplianceReports.vue","compliance reports page"],
+  ["src/pages/SecurityAssistant.vue","security assistant page"],
+  ["src/pages/Settings.vue","settings page"],
   ["src/api/stream.ts","SSE client"],
 ];
 for(const [file,label] of checks){await access(resolve(root,file));console.log(`ok  ${label}`);}
@@ -15,7 +21,7 @@ for(const marker of ["payroll-leak-demo","external_send","suspicious-exfil.com",
 console.log("ok  demo attack path");
 
 const base=process.env.SMOKE_BASE_URL??"http://127.0.0.1:5173";
-for(const path of ["/runtime","/sessions","/tool-calls","/policies","/core"]){
+for(const path of ["/overview","/runtime","/sessions","/tool-calls","/policies","/risk-intelligence","/evidence","/reports","/core","/assistant","/settings"]){
   const response=await fetch(`${base}${path}`,{signal:AbortSignal.timeout(3000)});
   const body=await response.text();
   if(!response.ok||!body.includes("TraceShield"))throw new Error(`${path} did not return the Vite application`);

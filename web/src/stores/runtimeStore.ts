@@ -31,8 +31,9 @@ export const useRuntimeStore = defineStore("runtime", {
     activeRunId: "run-payroll-001",
     selectedNodeId: "send",
     activeRuntimeTab: "path" as RuntimeTab,
-    streamState: "disconnected" as "connecting" | "connected" | "disconnected",
+    streamState: "disconnected" as "connecting" | "connected" | "polling" | "disconnected",
     streamStop: null as null | (()=>void),
+    publicRefreshTimer: null as number | null,
   }),
   getters: {
     activeSession: (state) => state.sessions.find((item) => item.id === state.activeSessionId),
@@ -69,12 +70,15 @@ export const useRuntimeStore = defineStore("runtime", {
       this.selectedNodeId = sessionId === "payroll-leak-demo" ? "send" : "intent";
       this.activeRuntimeTab = "path";
       if(this.dataSource==="core"&&run){
-        try{const [graph,evidence,conversation]=await Promise.all([getRiskGraph(run.id),getEvidencePath(run.id),getConversationSummary(run.id)]);this.evidence=evidence;this.conversation=conversation;this.graphNodes=graph.nodes.map(node=>({...node,evidenceStepId:evidence.find(step=>step.nodeId===node.id)?.id}));this.graphEdges=graph.edges;this.timeline=conversation.map((message,index)=>({id:`conversation-${message.id}`,runId:run.id,time:String(index+1).padStart(2,"0"),title:message.role==="user"?"User message":"Assistant message",detail:message.summary,risk:"low"}));this.selectedNodeId=this.graphNodes[0]?.id??"";}
+        try{const [graph,evidence,conversation]=await Promise.all([getRiskGraph(run.id),getEvidencePath(run.id),getConversationSummary(run.id)]);this.evidence=evidence;this.conversation=conversation;const runCalls=this.toolCalls.filter(call=>call.runId===run.id);const riskRank:Record<RiskLevel,number>={low:0,medium:1,high:2,critical:3};this.graphNodes=graph.nodes.map(node=>{const linkedCall=node.toolCallId?runCalls.find(call=>call.id===node.toolCallId):node.stepSeq?runCalls.find(call=>call.stepSeq===node.stepSeq):undefined;const toolCallId=node.toolCallId??linkedCall?.id;const linkedEvidence=toolCallId?evidence.find(step=>step.nodeId===`tool:${toolCallId}`):evidence.find(step=>step.nodeId===node.id);const mergedRisk=linkedCall&&riskRank[linkedCall.riskLevel]>riskRank[node.risk]?linkedCall.riskLevel:node.risk;return{...node,risk:mergedRisk,toolCallId,evidenceStepId:linkedEvidence?.id,decision:node.decision??linkedCall?.decision,policyId:node.policyId??linkedCall?.policyHits[0],detail:node.detail==="Core 审计节点"&&linkedCall?linkedCall.resource:node.detail};});this.graphEdges=graph.edges;this.timeline=conversation.map((message,index)=>({id:`conversation-${message.id}`,runId:run.id,time:String(index+1).padStart(2,"0"),title:message.role==="user"?"用户消息":"助手消息",detail:message.summary,risk:"low"}));this.selectedNodeId=this.graphNodes.find(node=>node.decision==="block")?.id??this.graphNodes[0]?.id??"";}
         catch(error){this.error=`Run details unavailable: ${error instanceof Error?error.message:"unknown error"}`;this.graphNodes=[];this.graphEdges=[];this.evidence=[];}
       }
     },
     selectNode(nodeId: string) {
-      this.selectedNodeId = nodeId;
+      const direct=this.graphNodes.find(node=>node.id===nodeId);
+      const toolCallId=nodeId.startsWith("tool:")?nodeId.slice(5):"";
+      const linked=toolCallId?this.graphNodes.find(node=>node.toolCallId===toolCallId):undefined;
+      this.selectedNodeId = direct?.id??linked?.id??nodeId;
     },
     selectToolCall(toolCallId: string) {
       const call = this.toolCalls.find((item) => item.id === toolCallId);
@@ -89,7 +93,18 @@ export const useRuntimeStore = defineStore("runtime", {
     },
     connectStream(){
       this.streamStop?.();
+      if(this.publicRefreshTimer!==null){window.clearInterval(this.publicRefreshTimer);this.publicRefreshTimer=null;}
+      if(window.location.protocol==="https:"){
+        this.streamState="polling";
+        this.publicRefreshTimer=window.setInterval(()=>void this.refreshPublicSnapshot(),10_000);
+        return;
+      }
       this.streamStop=connectAuditStream({onStatus:(status)=>{this.streamState=status;},onEvent:(name,data)=>this.handleStreamEvent(name,data)});
+    },
+    async refreshPublicSnapshot(){
+      if(this.dataSource!=="core")return;
+      try{const [metrics,status,bundle]=await Promise.all([getDashboardMetrics(),getCoreStatus(),getAuditBundle()]);this.metrics=metrics;this.status={...status,eventsIngested:metrics.toolCalls24h};this.sessions=bundle.sessions;this.runs=bundle.runs;this.toolCalls=bundle.toolCalls;}
+      catch(error){this.error=`Public refresh unavailable: ${error instanceof Error?error.message:"unknown error"}`;}
     },
     handleStreamEvent(name:StreamEventName,data:Record<string,unknown>){
       if(name==="heartbeat"||name==="connected"){this.status.pluginLastSeen="just now";return;}
@@ -106,7 +121,7 @@ export const useRuntimeStore = defineStore("runtime", {
       }
       const sessionId=String(data.session_id??"unknown-session");const runId=String(data.run_id??"unknown-run");const toolCallId=String(data.tool_call_id??`tool-${Date.now()}`);const risk=this.normalizeRisk(data.risk_level);const decision=String(data.decision??"").toUpperCase()==="BLOCK"?"block":String(data.decision??"").toUpperCase()==="ALLOW"?"allow":"review";
       const existing=this.sessions.find(item=>item.id===sessionId);if(existing){existing.time="now";existing.unread=true;existing.risk=risk;this.sessions=[existing,...this.sessions.filter(item=>item.id!==sessionId)];}else this.sessions.unshift({id:sessionId,title:sessionId,subtitle:`${String(data.tool_name??"tool")} · live event`,risk,time:"now",runIds:[runId],unread:true});
-      const call:ToolCall={id:toolCallId,sessionId,runId,time:new Date().toLocaleTimeString("zh-CN",{hour12:false}),toolName:String(data.tool_name??"unknown_tool"),toolKind:String(data.tool_kind??"").includes("shell")?"shell":String(data.tool_kind??"").includes("file")?"filesystem":String(data.tool_kind??"").includes("network")?"network":"transform",resource:"Live Core event",decision,riskLevel:risk,latencyMs:0,policyHits:Array.isArray(data.matched_rules)?data.matched_rules.map(String):[],argumentsSummary:String(data.reason??"Live audit event"),nodeId:`tool:${toolCallId}`};
+      const stepSeq=typeof data.step_seq==="number"?data.step_seq:undefined;const call:ToolCall={id:toolCallId,sessionId,runId,...(stepSeq?{stepSeq}:{}),time:new Date().toLocaleTimeString("zh-CN",{hour12:false}),toolName:String(data.tool_name??"unknown_tool"),toolKind:String(data.tool_kind??"").includes("shell")?"shell":String(data.tool_kind??"").includes("file")?"filesystem":String(data.tool_kind??"").includes("network")?"network":"transform",resource:"Core 实时事件",decision,riskLevel:risk,latencyMs:0,policyHits:Array.isArray(data.matched_rules)?data.matched_rules.map(String):[],argumentsSummary:String(data.reason??"实时审计事件"),nodeId:`tool:${toolCallId}`};
       this.toolCalls.unshift(call);this.metrics.toolCalls24h+=1;if(decision==="block")this.metrics.blocked+=1;if(risk==="high"||risk==="critical")this.metrics.highRisk+=1;this.metrics.policyHits+=call.policyHits.length;this.status.eventsIngested+=1;this.status.pluginLastSeen="just now";
       if(sessionId===this.activeSessionId)this.timeline.unshift({id:`timeline-${toolCallId}`,runId,time:call.time,title:`${call.toolName} · ${decision}`,detail:call.argumentsSummary,risk,nodeId:call.nodeId});
     },

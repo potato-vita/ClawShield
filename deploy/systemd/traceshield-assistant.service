@@ -1,0 +1,22 @@
+[Unit]
+Description=TraceShield CloudWeGo Eino assistant service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/claw/桌面/traceshield/assistant-eino
+ExecStart=/home/claw/桌面/traceshield/assistant-eino/bin/traceshield-assistant
+Restart=on-failure
+RestartSec=3
+Environment=TRACESHIELD_ASSISTANT_HOST=127.0.0.1
+Environment=TRACESHIELD_ASSISTANT_PORT=8790
+Environment=TRACESHIELD_ASSISTANT_API_KEY_FILE=/home/claw/桌面/traceshield/api-key
+Environment=TRACESHIELD_ASSISTANT_BASE_URL=https://api.deepseek.com
+Environment=TRACESHIELD_ASSISTANT_MODEL=deepseek-v4-flash
+Environment=TRACESHIELD_ASSISTANT_THINKING_ENABLED=false
+Environment=NO_PROXY=127.0.0.1,localhost,api.deepseek.com
+Environment=no_proxy=127.0.0.1,localhost,api.deepseek.com
+
+[Install]
+WantedBy=default.target

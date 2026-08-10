@@ -13,13 +13,22 @@ const icons = {
   policy_decision: ShieldAlert,
   blocked: Ban,
 };
+const typeLabels = {
+  user_intent: "用户意图",
+  tool_call: "工具调用",
+  sensitive_object: "敏感对象",
+  network_sink: "网络目标",
+  policy_decision: "策略决策",
+  blocked: "已阻止",
+};
+const decisionLabels = { block: "阻止", review: "复核", allow: "允许" } as const;
 </script>
 
 <template>
   <button class="path-node" :class="[`type-${node.type}`, `risk-${node.risk}`, { selected }]" @click="$emit('select', props.node)">
     <span class="node-icon"><component :is="icons[node.type] ?? Bot" :size="17" /></span>
-    <span class="node-copy"><small>{{ node.type.replace('_', ' ') }}</small><strong>{{ node.label }}</strong><code>{{ node.detail }}</code></span>
-    <span v-if="node.decision" class="decision">{{ node.decision }}</span>
+    <span class="node-copy"><small>{{ typeLabels[node.type] }}</small><strong>{{ node.label }}</strong><code>{{ node.detail }}</code></span>
+    <span v-if="node.decision" class="decision">{{ decisionLabels[node.decision] }}</span>
   </button>
 </template>
 

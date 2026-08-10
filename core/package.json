@@ -12,10 +12,11 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:check": "tsx src/db/check.ts",
     "seed:demo": "tsx scripts/seed_demo_data.ts",
+    "seed:long-chain": "tsx scripts/seed_long_chain.ts",
     "smoke": "tsx scripts/smoke_test.ts"
     ,"test": "vitest run"
     ,"test:unit": "vitest run src/engine/__tests__"
-    ,"method:test": "npm --prefix method-engine exec -- .venv/bin/python -m pytest -q"
+    ,"method:test": "cd method-engine && .venv/bin/python -m pytest -q"
     ,"method:health": "tsx scripts/method_health.ts"
     ,"method:replay": "tsx scripts/method_replay.ts"
     ,"method:report": "tsx scripts/method_report.ts"
